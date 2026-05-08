@@ -23,7 +23,7 @@ Verkoop overschot → Koop nieuwe fabrieken/upgrades → Bereik eindproduct
 
 De cyclus is **nooit volledig idle**: de speler moet actief beslissingen nemen over routing, verkoop-timing en bottleneck-oplossing.
 
-**Pacing:** een eerste run duurt naar schatting 45–90 minuten. In latere runs versnelt dit door opgeslagen schematics en prestige-bonussen.
+**Pacing:** een eerste run duurt naar schatting 45–90 minuten. In latere runs versnelt dit door opgeslagen schematics.
 
 ---
 
@@ -168,11 +168,10 @@ De raket is het eerste en centrale einddoel. De productieketen:
 
 ### 8.2 Prestige (Reset)
 
-- Reset het canvas, geld en tech tree volledig
-- Behoudt **permanente multipliers** (snelheid, prijzen, startkapitaal) als prestige-beloning
+- Reset **alles**: canvas, geld en tech tree
 - Behoudt **opgeslagen schematics** — zie sectie 8.3
 
-> Verdere prestige-mechanics (extra eindproducten, permanente tech tree-ontgrendelingen) worden later uitgewerkt.
+> Herhaalbaarheidsmechanics (multipliers, permanente ontgrendelingen) worden later uitgewerkt als het ontwerp verder is.
 
 ### 8.3 Winconditie
 
@@ -205,7 +204,7 @@ Een aparte uitdagingsmodus met een tijdslimiet per run. Geen effect op het hoofd
 ## 10. Technische Richting
 
 - **Platform**: Browser (HTML5 Canvas / WebGL)
-- **Taal**: Vanilla JavaScript (geen framework op het canvas zelf)
+- **Taal**: TypeScript (geen framework op het canvas zelf)
 - **UI-laag**: Vue.js voor panelen, menus, upgrades en HUD buiten het canvas
 - **Canvas-libraries**: Konva.js of custom canvas (geen React Flow)
 - **Grid**: vaste celgrootte; nodes snappen in op gridposities
