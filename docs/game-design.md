@@ -65,20 +65,20 @@ Elke node is een rechthoekig venster op het canvas met:
 
 Productie verloopt in lagen van toenemende complexiteit:
 
-| Laag                     | Voorbeeld                     |
-| ------------------------ | ----------------------------- |
-| Laag 0 – Grondstoffen    | IJzererts, Kolen, Zand        |
-| Laag 1 – Basisverwerking | Gesmolten ijzer, Glas         |
-| Laag 2 – Halffabricaten  | Stalen platen, Draden, Buizen |
-| Laag 3 – Componenten     | Motoren, Circuits, Tandwielen |
-| Laag 4 – Producten       | Machines, Apparaten           |
-| Laag 5 – Eindproduct     | Raket                         |
+| Laag                    | Voorbeeld                     |
+| ----------------------- | ----------------------------- |
+| Laag 0 – Grondstoffen   | IJzererts, Kolen, Zand        |
+| Laag 1 – Energie        | Brandstof                     |
+| Laag 2 – Halffabricaten | Stalen platen, Draden, Buizen |
+| Laag 3 – Componenten    | Motoren, Circuits, Tandwielen |
+| Laag 4 – Producten      | Machines, Apparaten           |
+| Laag 5 – Eindproduct    | Raket                         |
 
 ### 4.2 Ratio's & Bottlenecks
 
 Fabrieken verbruiken inputs in **vaste ratio's**:
 
-> Staalfabriek: 3× IJzererts + 1× Kolen → 1× Staal per seconde
+> Smelterij: 3× IJzererts + 1× Kolen → 1× Staal per 2 ticks (= 10 Staal/sec bij basissnelheid)
 
 Als de aanvoer te langzaam is, produceert de fabriek trager. Dit is de **tactische kern** van het spel: ratio's in balans brengen door meerdere aanvoerfabrieken te plaatsen of de snelheid te upgraden.
 
@@ -99,6 +99,34 @@ Als de aanvoer te langzaam is, produceert de fabriek trager. Dit is de **tactisc
 | **Opslagpakhuis**      | Grote buffer tussen twee fabrieken                                    |
 | **Markt/Verkooppunt**  | Zet goederen om in geld                                               |
 | **Node Group**         | Meerdere nodes bundelen tot één container                             |
+
+---
+
+### 4.5 Fabrieksrecepten
+
+Alle fabrieken met hun productierecept, cyclusduur, bouwkosten en brandstofverbruik.
+
+**Incrementele bouwkosten**: elke extra fabriek van hetzelfde type kost ×1.5 meer dan de vorige.
+Formule: `kosten_n = basiskosten × 1.5^(n−1)` waarbij n het aantal al gebouwde fabrieken van dat type is.
+Voorbeeld: 3e IJzermijn = €50 × 1.5² = €113.
+
+| Fabriek        | Input per cyclus                                                          | Output per cyclus                | Ticks | Bouwkost (1e) | Brandstof/tick |
+| -------------- | ------------------------------------------------------------------------- | -------------------------------- | ----- | ------------- | -------------- |
+| IJzermijn      | —                                                                         | 1× IJzererts                     | 1     | €50           | 0.5            |
+| Kolenmijn      | —                                                                         | 1× Kolen                         | 1     | €60           | 0.5            |
+| Kopermijn      | —                                                                         | 1× Koper                         | 1     | €80           | 0.5            |
+| Siliciummijn   | —                                                                         | 1× Silicium                      | 1     | €80           | 0.5            |
+| Energy Supply  | —                                                                         | 2× Brandstof                     | 1     | €150          | —              |
+| Smelterij      | 3× IJzererts + 1× Kolen                                                   | 1× Staal                         | 2     | €500          | 1              |
+| Kabelproductie | 2× Koper                                                                  | 1× Kabels                        | 2     | €400          | 1              |
+| Gieterij       | 4× Staal                                                                  | 1× Rompdelen + 1× Brandstoftanks | 4     | €1.000        | 1.5            |
+| Chipfabriek    | 2× Silicium + 3× Kabels                                                   | 1× Circuits                      | 4     | €3.000        | 2              |
+| Elektronica    | 2× Circuits                                                               | 1× Besturingssysteem             | 4     | €6.000        | 2              |
+| Motorenfabriek | 4× Staal + 2× Brandstof                                                   | 1× Stuwraketten                  | 4     | €15.000       | 2 \*           |
+| Assemblage     | 2× Rompdelen + 2× Brandstoftanks + 1× Besturingssysteem + 2× Stuwraketten | 1× Raket                         | 20    | €50.000       | 3              |
+
+> \* Motorenfabriek verbruikt naast 2 brandstof/tick als energiebron ook 2 brandstof per cyclus als recept-input (= 0.5/tick extra bij basissnelheid).
+> Assemblage is uniek; er wordt slechts één gebouwd.
 
 ---
 
@@ -151,48 +179,47 @@ Boven een bepaald surplusniveau loont het meer om een fabriek direct te upgraden
 
 Upgrades zijn per-node beschikbaar en kosten geld. Elke upgrade heeft **afnemend meerrendement**: hogere niveaus kosten exponentieel meer maar leveren steeds minder extra opbrengst op.
 
-| Upgrade             | Effect                                                 |
-| ------------------- | ------------------------------------------------------ |
-| Snelheid            | Productiesnelheid ×1.5 / ×2 / ×3 (elke stap duurder)   |
-| Buffer              | Invoer-/uitvoerbuffer vergroten                        |
-| Efficiëntie         | Inputverbruik verlagen (bv. 2.5× i.p.v. 3× erts)       |
-| Lijnkapaciteit      | Maximale doorvoer van verbindingslijn verhogen         |
-| Energie-efficiëntie | Verlaagt Brandstof-verbruik van een specifieke fabriek |
+| Upgrade             | Effect                                                                        |
+| ------------------- | ----------------------------------------------------------------------------- |
+| Snelheid            | Productiesnelheid ×1.5 per upgradeniveau (elke stap ×3 duurder; geen maximum) |
+| Buffer              | Invoer-/uitvoerbuffer vergroten                                               |
+| Efficiëntie         | Inputverbruik verlagen (bv. 2.5× i.p.v. 3× erts)                              |
+| Lijnkapaciteit      | Maximale doorvoer van verbindingslijn verhogen                                |
+| Energie-efficiëntie | Verlaagt Brandstof-verbruik van een specifieke fabriek                        |
 
 ### 6.1 Marginaal Rendement
 
-Het rendement van een upgrade = **extra opbrengst per seconde ÷ upgradekosten**. Hogere-laag fabrieken produceren duurdere goederen, waardoor hun upgrades sneller terugverdiend zijn — ook al kosten ze nominaal meer.
+Het rendement van een upgrade wordt uitgedrukt als **terugverdientijd**: upgradekosten ÷ extra netto-opbrengst per seconde. Hoe korter, hoe aantrekkelijker.
 
-**Snelheidsupgrade niveau 1 (×1.5) — terugverdientijd per fabriek**
+Gegevens bij basissnelheid (20 ticks/sec), zonder energie-surplus, fabriek volledig bevoorraad.
+Upgrade niveau 1 kost 2× bouwkosten; elk volgend niveau ×3 duurder.
 
-Aanname: elke fabriek produceert bij basissnelheid het opgegeven aantal eenheden per seconde; upgrade geeft +50%.
+Netto-opbrengst/sec = verkoopprijs van de output min inputkosten van grond- en halfstoffen, per seconde.
 
-| Fabriek        | Product      | Prijs  | Basis inkomst/sec | Upgrade L1 kosten | Extra/sec | Terugverdientijd |
-| -------------- | ------------ | ------ | ----------------- | ----------------- | --------- | ---------------- |
-| IJzermijn      | IJzererts    | €2     | €2                | €50               | +€1       | **50 sec**       |
-| Kolenmijn      | Kolen        | €3     | €3                | €75               | +€1,50    | **50 sec**       |
-| Kopermijn      | Koper        | €4     | €4                | €75               | +€2       | **37 sec**       |
-| Smelterij      | Staal        | €60    | €60               | €500              | +€30      | **17 sec**       |
-| Kabelproductie | Kabels       | €40    | €40               | €400              | +€20      | **20 sec**       |
-| Chipfabriek    | Circuits     | €400   | €200 \*           | €3.000            | +€100     | **30 sec**       |
-| Motorenfabriek | Stuwraketten | €5.000 | €1.250 \*\*       | €15.000           | +€625     | **24 sec**       |
+| Fabriek        | Netto inkomst/sec | Upgrade L1 kosten | Extra/sec (+50%) | Terugverdientijd |
+| -------------- | ----------------- | ----------------- | ---------------- | ---------------- |
+| IJzermijn      | €40               | €100              | +€20             | **5 sec**        |
+| Kolenmijn      | €60               | €120              | +€30             | **4 sec**        |
+| Kopermijn      | €80               | €160              | +€40             | **4 sec**        |
+| Smelterij      | €510              | €1.000            | +€255            | **3.9 sec**      |
+| Kabelproductie | €320              | €800              | +€160            | **5 sec**        |
+| Gieterij       | €1.050            | €2.000            | +€525            | **3.8 sec**      |
+| Chipfabriek    | €1.360            | €6.000            | +€680            | **8.8 sec**      |
+| Elektronica    | €4.000            | €12.000           | +€2.000          | **6 sec**        |
+| Motorenfabriek | €23.700           | €30.000           | +€11.850         | **2.5 sec**      |
 
-> \* Chipfabriek produceert 0,5 eenheid/sec (complexer recept)
-> \*\* Motorenfabriek produceert 0,25 eenheid/sec (langste productiecyclus)
+> Terugverdientijd geldt alleen als de fabriek ononderbroken draait met voldoende input.
+> Chipfabriek scoort lager door hoge tussenliggende inputkosten; is echter verplicht voor de raket.
 
-Mijnbouw-upgrades verdienen zich ~50 sec terug; Smelterij slechts 17 sec. Hoe hoger de productielaag, hoe sneller niveau 1 zich terugverdient.
+**Schaling over meerdere niveaus** (terugverdientijd ×3 per niveau):
 
----
+| Upgrade niveau | IJzermijn | Smelterij | Motorenfabriek |
+| -------------- | --------- | --------- | -------------- |
+| Niveau 1       | 5 sec     | 3.9 sec   | 2.5 sec        |
+| Niveau 2       | 15 sec    | 11.7 sec  | 7.5 sec        |
+| Niveau 3       | 45 sec    | 35 sec    | 22.5 sec       |
 
-**Schaling over meerdere niveaus — upgradekost groeit ×3 per niveau**
-
-| Upgrade niveau | IJzermijn | Smelterij | Chipfabriek |
-| -------------- | --------- | --------- | ----------- |
-| Niveau 1       | 50 sec    | 17 sec    | 30 sec      |
-| Niveau 2       | 150 sec   | 50 sec    | 90 sec      |
-| Niveau 3       | 450 sec   | 150 sec   | 270 sec     |
-
-Zodra Smelterij niveau 2 wordt (terugverdientijd 50 sec), is een nog-niet-geüpgrade Chipfabriek niveau 1 (30 sec) aantrekkelijker. Als de Energy Supply de bottleneck is (Brandstof-tekort vertraagt alles), kan die tijdelijk de beste keuze zijn — ongeacht de laag.
+Zodra de terugverdientijd van de beste beschikbare upgrade hoger is dan een nog-niet-geüpgrade fabriek elders in de keten, is die andere upgrade aantrekkelijker. Als de Energy Supply een brandstoftekort veroorzaakt, verslechtert dat de netto-opbrengst van álle fabrieken — dat maakt het altijd de eerste prioriteit.
 
 Er is geen maximumniveau; upgrades schalen altijd door, maar het rendement daalt zodanig dat de speler altijd een betere optie elders in de keten vindt.
 
