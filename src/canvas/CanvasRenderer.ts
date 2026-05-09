@@ -3,11 +3,11 @@ import { NODE_DEFS } from "../simulation/recipes"
 import type { GameState, NodeInstance, Connection } from "../simulation/types"
 
 /** Width and height of one grid cell in pixels. */
-const CELL_SIZE = 64
+const CELL_SIZE = 32
 
 /** Number of grid columns and rows in the initial canvas. */
-const GRID_COLS = 20
-const GRID_ROWS = 12
+const GRID_COLS = 40
+const GRID_ROWS = 24
 
 /** Radius of input/output dots on nodes. */
 const DOT_RADIUS = 6

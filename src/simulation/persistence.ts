@@ -1,7 +1,9 @@
 import type { GameState } from "./types"
 
-/** localStorage key used to store and retrieve the serialised game state. */
-const STORAGE_KEY = "factory-flow-state"
+/** localStorage key used to store and retrieve the serialised game state.
+ * Bump the suffix when the save format changes in a breaking way.
+ */
+const STORAGE_KEY = "factory-flow-state-v2"
 
 /**
  * Serialises the current game state to JSON and writes it to localStorage.

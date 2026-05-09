@@ -3,7 +3,7 @@ import { NODE_DEFS } from "../simulation/recipes"
 import type { GameState, NodeInstance } from "../simulation/types"
 
 /** Width and height of one grid cell in pixels. */
-const CELL_SIZE = 64
+const CELL_SIZE = 32
 
 /** Radius of interactive hit area around each dot (larger than visual radius). */
 const DOT_HIT_RADIUS = 10

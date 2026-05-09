@@ -105,10 +105,10 @@ const energySupplyStart = createNodeInstance(
     "node-2",
     NodeType.EnergySupply,
     1,
-    3,
+    5,
 )
 // The first Market is free and pre-placed so the player always has a sales outlet.
-const marketStart = createNodeInstance("node-3", NodeType.Market, 5, 1)
+const marketStart = createNodeInstance("node-3", NodeType.Market, 8, 1)
 
 /**
  * Reactive game state shared across all Vue components and the canvas renderer.
@@ -152,8 +152,8 @@ export function placeNode(type: NodeType, col: number, row: number): boolean {
     if (gameState.money < cost) return false
 
     // Clamp to grid bounds
-    const clampedCol = Math.max(0, Math.min(col, 20 - def.gridSize.width))
-    const clampedRow = Math.max(0, Math.min(row, 12 - def.gridSize.height))
+    const clampedCol = Math.max(0, Math.min(col, 40 - def.gridSize.width))
+    const clampedRow = Math.max(0, Math.min(row, 24 - def.gridSize.height))
 
     if (
         hasOverlap(
