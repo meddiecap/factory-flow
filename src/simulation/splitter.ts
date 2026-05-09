@@ -11,18 +11,18 @@ export function initSplitter(node: NodeInstance): void {
         node.splitterRatioA = 0.5
     }
     if (node.splitterAccumulators === undefined) {
-        // Start accumulator A pre-charged with one full ratio credit so the two
-        // outputs fire on alternating ticks instead of simultaneously.
-        node.splitterAccumulators = [node.splitterRatioA, 0]
+        // acc[0] = fractional credit for output A, acc[1] = fractional credit for output B.
+        node.splitterAccumulators = [0, 0]
     }
 }
 
 /**
- * Advances one Splitter node by one tick using fractional accumulation.
- * Each tick the ratio for each output is added to its internal accumulator.
- * Whenever an accumulator reaches or exceeds 1, one unit is dispatched to that output
- * and the accumulator is decremented by 1. This ensures the long-run output ratio
- * matches the configured ratio without rounding errors.
+ * Advances one Splitter node by one tick using fractional credit accumulation.
+ * Each input item contributes ratioA credit to output A and ratioB credit to output B.
+ * Whenever a credit reaches 1 an item is dispatched to that output and the credit
+ * is decremented by 1; fractional remainder carries over to the next item.
+ * When one output is full its pending credits overflow to the other output.
+ * If both outputs are full, processing stops to preserve backpressure.
  * Called after connection transport so the input buffer holds the latest goods.
  *
  * @param node - The Splitter node instance to advance.
@@ -35,7 +35,7 @@ export function tickSplitter(node: NodeInstance): void {
         initSplitter(node)
     }
 
-    const accumulators = node.splitterAccumulators!
+    const acc = node.splitterAccumulators!
     const ratioA = node.splitterRatioA!
     const ratioB = 1 - ratioA
 
@@ -50,30 +50,42 @@ export function tickSplitter(node: NodeInstance): void {
     outBufA.resource = inBuf.resource
     outBufB.resource = inBuf.resource
 
-    // Accumulate ratio each tick.
-    accumulators[0] += ratioA
-    accumulators[1] += ratioB
-
-    // Use a small epsilon to guard against floating-point drift (e.g. 0.9999…98 instead of 1).
+    // Small epsilon to guard against floating-point drift (e.g. 0.9999…8 instead of 1).
     const THRESHOLD = 1 - 1e-9
 
-    // Dispatch units when accumulator reaches 1.
-    if (accumulators[0] >= THRESHOLD && inBuf.amount >= 1) {
-        const canSend = outBufA.amount < outBufA.capacity
-        if (canSend) {
-            inBuf.amount -= 1
-            outBufA.amount += 1
-            accumulators[0] -= 1
-        }
-        // If output A is blocked, accumulator keeps building — handled naturally.
-    }
+    // Process all available items this tick.
+    // Each item adds ratioA credit to acc[0] (→ A) and ratioB credit to acc[1] (→ B).
+    // When a credit reaches 1, one item is dispatched; if that output is full the item
+    // overflows to the other output instead. Credits below 1 carry over to the next item.
+    while (inBuf.amount >= 1) {
+        if (
+            outBufA.amount >= outBufA.capacity &&
+            outBufB.amount >= outBufB.capacity
+        )
+            break
 
-    if (accumulators[1] >= THRESHOLD && inBuf.amount >= 1) {
-        const canSend = outBufB.amount < outBufB.capacity
-        if (canSend) {
-            inBuf.amount -= 1
-            outBufB.amount += 1
-            accumulators[1] -= 1
+        inBuf.amount -= 1
+        acc[0] += ratioA
+        acc[1] += ratioB
+
+        // Dispatch A credit — overflow to B when A is full.
+        if (acc[0] >= THRESHOLD) {
+            acc[0] -= 1
+            if (outBufA.amount < outBufA.capacity) {
+                outBufA.amount += 1
+            } else {
+                outBufB.amount += 1
+            }
+        }
+
+        // Dispatch B credit — overflow to A when B is full.
+        if (acc[1] >= THRESHOLD) {
+            acc[1] -= 1
+            if (outBufB.amount < outBufB.capacity) {
+                outBufB.amount += 1
+            } else {
+                outBufA.amount += 1
+            }
         }
     }
 }
