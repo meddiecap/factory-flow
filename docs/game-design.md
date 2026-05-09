@@ -389,7 +389,7 @@ Elke node houdt een `progress: number` (float 0.0–N) bij die elke tick met `sn
 
 ### 14.1 Balancetesten via TDD
 
-De simulatielaag is volledig gedekt door 35 geautomatiseerde tests in `./__tests__/`. De tests volgen de aanpak hieronder. Als balanswaarden in dit document wijzigen, falen de betrokken tests direct — wat inconsistenties tussen ontwerp en implementatie voorkomt.
+Elke feature en elk stukje simulatielogica krijgt geautomatiseerde tests in `./__tests__/`. Er is geen limiet op het aantal tests — dekking is leidend, niet een getal. Als balanswaarden in dit document wijzigen, falen de betrokken tests direct — wat inconsistenties tussen ontwerp en implementatie voorkomt.
 
 | Testtype              | Wat het verifieert                                                                                                                                                 | Status                                                            |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- |
