@@ -69,6 +69,16 @@ function tick(nodes: Node[], connections: Connection[]): SimulationState { … }
 
 Private helpers die enkel intern worden gebruikt hoeven geen uitgebreide docblock, maar krijgen wel een korte één-regel comment als de logica niet vanzelfsprekend is.
 
+## Bestandsgrootte en moduleopsplitsing
+
+- **Harde limiet: 300 regels per bestand.** Overschrijdt een bestand deze limiet, splits het dan op voordat je nieuwe functionaliteit toevoegt.
+- Splits canvas-bestanden op verantwoordelijkheid:
+    - `canvas/renderer/` — één bestand per visueel onderdeel (nodes, connections, grid, overlays)
+    - `canvas/interaction/` — één bestand per interactiemodus (drag, connect, select, pan)
+- Splits `useGameState.ts` in losse composables: één per domein (nodes, connections, economy, upgrades, …)
+- Vue-componenten > 200 regels opsplitsen in sub-componenten of losse `<script>`-composables
+- Elk nieuw canvas-subsysteem krijgt een eigen bestand; nooit uitbreiden in een bestaand bestand dat al > 200 regels heeft
+
 ## Spelregels voor code
 
 - Productiesnelheid wordt altijd uitgedrukt als **eenheden per tick**
