@@ -7,11 +7,13 @@ import type { NodeInstance } from "./types"
  * @param node - The Splitter node instance to initialise.
  */
 export function initSplitter(node: NodeInstance): void {
-    if (node.splitterAccumulators === undefined) {
-        node.splitterAccumulators = [0, 0]
-    }
     if (node.splitterRatioA === undefined) {
         node.splitterRatioA = 0.5
+    }
+    if (node.splitterAccumulators === undefined) {
+        // Start accumulator A pre-charged with one full ratio credit so the two
+        // outputs fire on alternating ticks instead of simultaneously.
+        node.splitterAccumulators = [node.splitterRatioA, 0]
     }
 }
 
@@ -43,6 +45,10 @@ export function tickSplitter(node: NodeInstance): void {
 
     if (inBuf === undefined || outBufA === undefined || outBufB === undefined)
         return
+
+    // Keep output resource types in sync with whatever flows in.
+    outBufA.resource = inBuf.resource
+    outBufB.resource = inBuf.resource
 
     // Accumulate ratio each tick.
     accumulators[0] += ratioA
