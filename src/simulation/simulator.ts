@@ -1,4 +1,4 @@
-import { NodeType } from "./types"
+import { NodeType, ResourceType } from "./types"
 import type { GameState } from "./types"
 import { NODE_DEFS } from "./recipes"
 import { calcSpeedFactor } from "./energy"
@@ -49,4 +49,24 @@ export function tick(state: GameState): void {
 
     // 5. Advance tick counter.
     state.tick++
+}
+
+/**
+ * Returns true when the win condition is met: at least one Rocket is present
+ * in any Assembly node's output buffer.
+ * Called once per tick by the game loop immediately after tick().
+ *
+ * @param state - The current game state to inspect.
+ * @returns `true` when the player has assembled at least one Rocket.
+ */
+export function checkWin(state: GameState): boolean {
+    for (const node of state.nodes) {
+        if (node.type !== NodeType.Assembly) continue
+        for (const buf of node.outputBuffers) {
+            if (buf.resource === ResourceType.Rocket && buf.amount >= 1) {
+                return true
+            }
+        }
+    }
+    return false
 }
