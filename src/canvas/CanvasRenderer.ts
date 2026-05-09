@@ -260,7 +260,8 @@ function drawNode(
     // Energy Supply stats – output rate and connected factory count.
     if (node.type === NodeType.EnergySupply) {
         const effectiveOutput =
-            (def.energyOutputPerTick ?? 1) + (node.energyOutputUpgradeLevel ?? 0)
+            (def.energyOutputPerTick ?? 1) +
+            (node.energyOutputUpgradeLevel ?? 0)
         layer.add(
             new Konva.Text({
                 x: x + 4,
