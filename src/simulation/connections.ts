@@ -56,6 +56,9 @@ export function tickConnections(
     const events: TransferEvent[] = []
 
     for (const conn of connections) {
+        // Energy connections are handled by the energy system, not as buffer transfers.
+        if (conn.isEnergy) continue
+
         const source = nodeMap.get(conn.fromNodeId)
         const target = nodeMap.get(conn.toNodeId)
         if (source === undefined || target === undefined) continue

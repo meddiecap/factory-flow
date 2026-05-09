@@ -56,7 +56,12 @@ export enum NodeType {
  * Operational status of a node during simulation.
  * Drives whether progress increases and fuel is consumed each tick.
  */
-export type NodeStatus = "active" | "waiting" | "output-blocked" | "idle"
+export type NodeStatus =
+    | "active"
+    | "waiting"
+    | "output-blocked"
+    | "idle"
+    | "no-energy"
 
 /**
  * A single resource slot in a node's input or output buffer.
@@ -119,10 +124,21 @@ export interface NodeDef {
     /** Base purchase price in currency units (€). */
     buildCost: number
     /**
-     * Fuel consumed per tick from the global energy pool while active.
-     * EnergySupply nodes set this to 0 because they produce fuel, not consume it.
+     * Energy units consumed per tick from the connected Energy Supply.
+     * Used to compute the per-node speedFactor in the energy system.
+     * EnergySupply and utility nodes set this to 0.
      */
     fuelPerTick: number
+    /**
+     * Whether this node requires an explicit energy connection to operate.
+     * True for all production factories; false for EnergySupply, Splitter, Market, Warehouse.
+     */
+    hasEnergyInput?: boolean
+    /**
+     * Energy units produced per tick (EnergySupply only).
+     * Autonomous: no cycle, no input required. Distributed equally over all connected factories.
+     */
+    energyOutputPerTick?: number
     /** Grid footprint of this node type. */
     gridSize: GridSize
     /** Default capacity of each input buffer slot at placement. */
@@ -196,6 +212,11 @@ export interface Connection {
     capacity: number
     /** Line capacity upgrade level; each level adds +10 units/tick. */
     capacityUpgradeLevel: number
+    /**
+     * True when this connection carries energy from an Energy Supply to a factory.
+     * Energy connections are drawn in yellow and processed separately from resource flow.
+     */
+    isEnergy?: boolean
 }
 
 /**

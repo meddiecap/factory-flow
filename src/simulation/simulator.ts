@@ -1,7 +1,7 @@
 import { NodeType, ResourceType } from "./types"
 import type { GameState } from "./types"
 import { NODE_DEFS } from "./recipes"
-import { calcSpeedFactor } from "./energy"
+import { calcNodeSpeedFactors } from "./energy"
 import { tickConnections } from "./connections"
 import { tickNode } from "./tick"
 import { tickSplitter } from "./splitter"
@@ -10,8 +10,8 @@ import { tickSplitter } from "./splitter"
  * Advances the entire simulation by one tick, updating all node buffers and connections.
  * Called by the game loop at a fixed interval (50 ms = 20 ticks/sec) to drive production flow.
  * Execution order per tick:
- *   1. Calculate the global speed factor from the energy balance.
- *   2. Transport goods along all connections (output → input buffers).
+ *   1. Calculate per-node speed factors from explicit energy connections.
+ *   2. Transport goods along all resource connections (output → input buffers).
  *   3. Advance each production node's cycle progress.
  *   4. Process each Splitter node's fractional distribution.
  *   5. Increment the tick counter.
@@ -21,10 +21,10 @@ import { tickSplitter } from "./splitter"
 export function tick(state: GameState): void {
     const { nodes, connections } = state
 
-    // 1. Global speed factor from energy balance.
-    const speedFactor = calcSpeedFactor(nodes, NODE_DEFS)
+    // 1. Per-node speed factors from explicit energy connections.
+    const speedFactors = calcNodeSpeedFactors(nodes, connections, NODE_DEFS)
 
-    // 2. Transport goods along connections.
+    // 2. Transport goods along resource connections (energy connections are skipped).
     state.lastTransfers = tickConnections(nodes, connections)
 
     // 3. Advance each production node.
@@ -37,7 +37,8 @@ export function tick(state: GameState): void {
             continue
         }
 
-        tickNode(node, def, speedFactor)
+        const sf = speedFactors.get(node.id) ?? 1.0
+        tickNode(node, def, sf)
     }
 
     // 4. Process Splitter nodes.

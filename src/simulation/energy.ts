@@ -1,60 +1,82 @@
 import { NodeType } from "./types"
-import type { NodeInstance } from "./types"
-import type { NodeDef } from "./types"
-import { effectiveFuelPerTick, isEnergySupply } from "./tick"
+import type { NodeInstance, NodeDef, Connection } from "./types"
+import { effectiveFuelPerTick } from "./tick"
 
 /**
- * Calculates the global speed factor based on fuel supply and demand.
- * Energy Supply nodes produce fuel into the global pool; all other active production
- * nodes consume from it. The ratio of supply to demand determines how fast every
- * factory runs this tick. A surplus bonus is applied via a logarithmic curve.
- * Called once per tick before any node is advanced.
+ * Computes a per-node speed factor based on explicit energy connections.
+ * Each production factory must be connected to an Energy Supply via an energy connection.
+ * The Energy Supply distributes its output equally among all connected factories.
+ * Factories without an energy connection receive speedFactor 0 (completely stopped).
+ * Utility nodes (Splitter, Market, Warehouse) and EnergySupply itself receive 1.0.
+ * Called once per tick before nodes are advanced.
  *
- * @param nodes - All active node instances on the canvas.
+ * @param nodes - All node instances on the canvas.
+ * @param connections - All active connections, including energy connections.
  * @param defs - Record mapping NodeType to its static definition.
- * @returns Speed factor to apply to all production nodes this tick (≥ 0).
+ * @returns Map of node id → speed factor (0–1) for use in tickNode.
  */
-export function calcSpeedFactor(
+export function calcNodeSpeedFactors(
     nodes: NodeInstance[],
+    connections: Connection[],
     defs: Record<NodeType, NodeDef>,
-): number {
-    let produced = 0
-    let consumed = 0
+): Map<string, number> {
+    const result = new Map<string, number>()
+
+    const nodeMap = new Map<string, NodeInstance>()
+    for (const node of nodes) nodeMap.set(node.id, node)
+
+    const energyConns = connections.filter((c) => c.isEnergy === true)
 
     for (const node of nodes) {
         const def = defs[node.type]
         if (def === undefined) continue
 
-        if (isEnergySupply(node.type)) {
-            // Energy Supply nodes always contribute to the global pool.
-            // They never become output-blocked (see tickNode); overflow is silently
-            // discarded and does not add a bonus to the pool beyond the base rate.
-            // Each cycle produces `outputs[0].amount` fuel over `cycleDuration` ticks.
-            // The global pool counts fuel produced per tick at full speed.
-            const fuelPerTick = def.outputs[0]!.amount / def.cycleDuration
-            produced += fuelPerTick
-        } else if (def.cycleDuration > 0) {
-            // Production node: only consumes fuel when active (not waiting or output-blocked).
-            if (node.status !== "waiting" && node.status !== "output-blocked") {
-                consumed += effectiveFuelPerTick(
-                    def.fuelPerTick,
-                    node.energyEfficiencyUpgradeLevel,
-                )
-            }
+        if (!def.hasEnergyInput) {
+            // Utility nodes and EnergySupply itself run unconstrained.
+            result.set(node.id, 1.0)
+            continue
         }
+
+        // Find the single energy connection pointing to this factory.
+        const energyConn = energyConns.find((c) => c.toNodeId === node.id)
+        if (energyConn === undefined) {
+            // No energy connection → factory is completely stopped.
+            result.set(node.id, 0)
+            continue
+        }
+
+        const supply = nodeMap.get(energyConn.fromNodeId)
+        if (supply === undefined) {
+            result.set(node.id, 0)
+            continue
+        }
+
+        const supplyDef = defs[supply.type]
+        const energyOutputPerTick = supplyDef?.energyOutputPerTick ?? 0
+
+        // Count how many factories this supply is feeding.
+        const connectedCount = energyConns.filter(
+            (c) => c.fromNodeId === supply.id,
+        ).length
+
+        if (connectedCount === 0 || energyOutputPerTick === 0) {
+            result.set(node.id, 0)
+            continue
+        }
+
+        const receivedPerTick = energyOutputPerTick / connectedCount
+        const neededPerTick = effectiveFuelPerTick(
+            def.fuelPerTick,
+            node.energyEfficiencyUpgradeLevel,
+        )
+
+        if (neededPerTick === 0) {
+            result.set(node.id, 1.0)
+            continue
+        }
+
+        result.set(node.id, Math.min(1, receivedPerTick / neededPerTick))
     }
 
-    // No consumers → no constraint; run at full speed.
-    if (consumed === 0) return 1.0
-
-    const ratio = produced / consumed
-
-    if (ratio >= 1) {
-        // Surplus: apply logarithmic bonus. Formula: 1 + 0.2 × ln(surplus + 1)
-        const surplus = produced - consumed
-        return 1 + 0.2 * Math.log(surplus + 1)
-    }
-
-    // Deficit: clamp to [0, 1].
-    return Math.max(0, ratio)
+    return result
 }

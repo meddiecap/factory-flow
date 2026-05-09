@@ -254,25 +254,39 @@ export function reconnectConnection(
     const conn = gameState.connections.find((c) => c.id === connectionId)
     if (conn === undefined) return false
 
-    // Validate that fromDotIndex refers to a real output and toDotIndex to a real input.
     const fromNode = gameState.nodes.find((n) => n.id === fromNodeId)
     const toNode = gameState.nodes.find((n) => n.id === toNodeId)
     if (fromNode === undefined || toNode === undefined) return false
-    if (fromDotIndex >= fromNode.outputBuffers.length) return false
-    if (toDotIndex >= toNode.inputBuffers.length) return false
 
-    // Build the connection list without this connection for cycle/dot checks.
     const others = gameState.connections.filter((c) => c.id !== connectionId)
 
-    if (wouldCreateCycle(fromNodeId, toNodeId, others)) return false
-
-    // Check that no other connection already uses either dot.
-    const dotConflict = others.some(
-        (c) =>
-            (c.fromNodeId === fromNodeId && c.fromDotIndex === fromDotIndex) ||
-            (c.toNodeId === toNodeId && c.toDotIndex === toDotIndex),
-    )
-    if (dotConflict) return false
+    if (conn.isEnergy) {
+        // Energy connection: validate the same way as addConnection for energy.
+        if (fromNode.type !== NodeType.EnergySupply) return false
+        const toDef = NODE_DEFS[toNode.type]
+        if (!toDef.hasEnergyInput) return false
+        if (toDotIndex !== toDef.inputs.length) return false
+        const alreadyPowered = others.some(
+            (c) => c.isEnergy && c.toNodeId === toNodeId,
+        )
+        if (alreadyPowered) return false
+        const fromDotUsed = others.some(
+            (c) =>
+                c.fromNodeId === fromNodeId && c.fromDotIndex === fromDotIndex,
+        )
+        if (fromDotUsed) return false
+    } else {
+        if (fromDotIndex >= fromNode.outputBuffers.length) return false
+        if (toDotIndex >= toNode.inputBuffers.length) return false
+        if (wouldCreateCycle(fromNodeId, toNodeId, others)) return false
+        const dotConflict = others.some(
+            (c) =>
+                (c.fromNodeId === fromNodeId &&
+                    c.fromDotIndex === fromDotIndex) ||
+                (c.toNodeId === toNodeId && c.toDotIndex === toDotIndex),
+        )
+        if (dotConflict) return false
+    }
 
     conn.fromNodeId = fromNodeId
     conn.fromDotIndex = fromDotIndex
@@ -303,8 +317,9 @@ export function connectionAtDot(
 
 /**
  * Adds a directed connection from an output dot to an input dot.
- * Validates that neither dot is already connected (one line per dot rule),
- * and that the connection would not create a cycle in the flow graph.
+ * For energy connections (fromNode is EnergySupply), validates that the target
+ * accepts energy input and has no existing energy connection.
+ * For resource connections, validates buffer indices and cycle-check.
  *
  * @param fromNodeId - Source node id.
  * @param fromDotIndex - Output dot index on the source node.
@@ -320,23 +335,45 @@ export function addConnection(
 ): boolean {
     if (fromNodeId === toNodeId) return false
 
-    // Validate that fromDotIndex refers to a real output and toDotIndex to a real input.
     const fromNode = gameState.nodes.find((n) => n.id === fromNodeId)
     const toNode = gameState.nodes.find((n) => n.id === toNodeId)
     if (fromNode === undefined || toNode === undefined) return false
-    if (fromDotIndex >= fromNode.outputBuffers.length) return false
-    if (toDotIndex >= toNode.inputBuffers.length) return false
 
-    if (wouldCreateCycle(fromNodeId, toNodeId, gameState.connections))
-        return false
+    const isEnergyConn = fromNode.type === NodeType.EnergySupply
 
-    // Check one-line-per-dot rule
-    const alreadyUsed = gameState.connections.some(
-        (c) =>
-            (c.fromNodeId === fromNodeId && c.fromDotIndex === fromDotIndex) ||
-            (c.toNodeId === toNodeId && c.toDotIndex === toDotIndex),
-    )
-    if (alreadyUsed) return false
+    if (isEnergyConn) {
+        const toDef = NODE_DEFS[toNode.type]
+        // Target must accept energy and the dot index must be the energy input dot.
+        if (!toDef.hasEnergyInput) return false
+        if (toDotIndex !== toDef.inputs.length) return false
+        // Only one energy connection per factory.
+        const alreadyPowered = gameState.connections.some(
+            (c) => c.isEnergy && c.toNodeId === toNodeId,
+        )
+        if (alreadyPowered) return false
+        // Each output dot on EnergySupply is unique; check fromDotIndex not reused.
+        const fromDotUsed = gameState.connections.some(
+            (c) =>
+                c.fromNodeId === fromNodeId && c.fromDotIndex === fromDotIndex,
+        )
+        if (fromDotUsed) return false
+    } else {
+        // Validate that fromDotIndex refers to a real output and toDotIndex to a real input.
+        if (fromDotIndex >= fromNode.outputBuffers.length) return false
+        if (toDotIndex >= toNode.inputBuffers.length) return false
+
+        if (wouldCreateCycle(fromNodeId, toNodeId, gameState.connections))
+            return false
+
+        // Check one-line-per-dot rule.
+        const alreadyUsed = gameState.connections.some(
+            (c) =>
+                (c.fromNodeId === fromNodeId &&
+                    c.fromDotIndex === fromDotIndex) ||
+                (c.toNodeId === toNodeId && c.toDotIndex === toDotIndex),
+        )
+        if (alreadyUsed) return false
+    }
 
     const conn: Connection = {
         id: newConnId(),
@@ -346,6 +383,7 @@ export function addConnection(
         toDotIndex,
         capacity: 10,
         capacityUpgradeLevel: 0,
+        isEnergy: isEnergyConn || undefined,
     }
     gameState.connections.push(conn)
     return true

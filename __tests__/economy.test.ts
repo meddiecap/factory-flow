@@ -1,7 +1,11 @@
 import { describe, it, expect } from "vitest"
 import { tickMarket, canUnlock, buildCost } from "../src/simulation/economy"
 import { NodeType, ResourceType } from "../src/simulation/types"
-import type { GameState, NodeInstance } from "../src/simulation/types" // Used in income test — static import avoids top-level await restriction.
+import type {
+    GameState,
+    NodeInstance,
+    Connection,
+} from "../src/simulation/types"
 import { tick } from "../src/simulation/simulator"
 function makeMarketNode(
     resource: ResourceType,
@@ -137,9 +141,23 @@ describe("buildCost", () => {
     })
 
     it("income test: IronMine + EnergySupply earns ≥€50 within 2000 ticks", () => {
-        // Minimal chain: 10 EnergySupply (pool) + 1 IronMine → Market.
+        // Minimal chain: 1 EnergySupply (explicit connection) + 1 IronMine → Market.
+        // IronMine needs 0.5/tick energy; ES produces 1.0/tick → speedFactor = 1.0.
         // IronMine produces 1 IronOre / 40 ticks. Market sells at €2.
         // In 2000 ticks the mine produces 50 ore → €100 earned.
+        const es: NodeInstance = {
+            id: "es",
+            type: NodeType.EnergySupply,
+            position: { col: 0, row: 3 },
+            progress: 0,
+            status: "idle",
+            inputBuffers: [],
+            outputBuffers: [],
+            speedUpgradeLevel: 0,
+            bufferUpgradeLevel: 0,
+            efficiencyUpgradeLevel: 0,
+            energyEfficiencyUpgradeLevel: 0,
+        }
         const mine: NodeInstance = {
             id: "mine",
             type: NodeType.IronMine,
@@ -171,25 +189,23 @@ describe("buildCost", () => {
             energyEfficiencyUpgradeLevel: 0,
             salesPoints: 1,
         }
-        const esNodes: NodeInstance[] = Array.from({ length: 10 }, (_, i) => ({
-            id: `es${i}`,
-            type: NodeType.EnergySupply,
-            position: { col: 0, row: 0 },
-            progress: 0,
-            status: "idle" as const,
-            inputBuffers: [],
-            outputBuffers: [
-                { resource: ResourceType.Fuel, amount: 0, capacity: 200 },
-            ],
-            speedUpgradeLevel: 0,
-            bufferUpgradeLevel: 0,
-            efficiencyUpgradeLevel: 0,
-            energyEfficiencyUpgradeLevel: 0,
-        }))
+
+        // Energy connection from ES to IronMine (energy dot = inputs.length = 0 for mine).
+        const energyConnection: Connection = {
+            id: "ec1",
+            fromNodeId: "es",
+            fromDotIndex: 0,
+            toNodeId: "mine",
+            toDotIndex: 0, // IronMine has 0 recipe inputs, so energy dot index = 0
+            capacity: 0,
+            capacityUpgradeLevel: 0,
+            isEnergy: true,
+        }
 
         const state: GameState = {
-            nodes: [...esNodes, mine, market],
+            nodes: [es, mine, market],
             connections: [
+                energyConnection,
                 {
                     id: "c1",
                     fromNodeId: "mine",

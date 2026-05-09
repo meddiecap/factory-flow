@@ -68,21 +68,24 @@ function makeConn(
     }
 }
 
+/** Creates an energy connection from an EnergySupply to a production factory. */
+function makeEnergyConn(es: NodeInstance, factory: NodeInstance): Connection {
+    const def = NODE_DEFS[factory.type]
+    return {
+        id: `ec-${es.id}->${factory.id}`,
+        fromNodeId: es.id,
+        fromDotIndex: 0,
+        toNodeId: factory.id,
+        toDotIndex: def.inputs.length, // energy input dot is after all recipe inputs
+        capacity: 0,
+        capacityUpgradeLevel: 0,
+        isEnergy: true,
+    }
+}
+
 describe("reachability", () => {
     it("produces at least 1 Rocket within 10,000 ticks using the complete production chain", () => {
         _id = 0
-
-        //
-        // ── Global energy pool ────────────────────────────────────────────────────────
-        // 400 EnergySupply nodes with a large output buffer (600) so they never become
-        // output-blocked during the run.  Each contributes 2/40 = 0.05 fuel/tick to
-        // the global pool → 20 fuel/tick produced.
-        // Steady-state consumption of all production nodes ≈ 16.5 fuel/tick
-        // → speedFactor ≈ 1 + 0.2 × ln(3.5 + 1) ≈ 1.30.
-        //
-        const poolES = Array.from({ length: 400 }, () =>
-            makeNode(NodeType.EnergySupply, 600),
-        )
 
         //
         // ── Foundry supply chain ──────────────────────────────────────────────────────
@@ -120,6 +123,27 @@ describe("reachability", () => {
         //
         const assembly = makeNode(NodeType.Assembly)
 
+        //
+        // ── Energy Supply nodes (one per production factory) ──────────────────────────
+        // Each ES produces 1.0 energy/tick. Factories needing > 1.0/tick run at partial
+        // speed (speedFactor < 1), but the chain completes well within 10,000 ticks.
+        //
+        const esIronMineA = makeNode(NodeType.EnergySupply)
+        const esCoalMineA = makeNode(NodeType.EnergySupply)
+        const esSmelterA = makeNode(NodeType.EnergySupply)
+        const esFoundry = makeNode(NodeType.EnergySupply)
+        const esIronMineB = makeNode(NodeType.EnergySupply)
+        const esCoalMineB = makeNode(NodeType.EnergySupply)
+        const esSmelterB = makeNode(NodeType.EnergySupply)
+        const esCoalMineC = makeNode(NodeType.EnergySupply)
+        const esEngineFactory = makeNode(NodeType.EnergySupply)
+        const esCopperMine = makeNode(NodeType.EnergySupply)
+        const esSiliconMine = makeNode(NodeType.EnergySupply)
+        const esCableFactory = makeNode(NodeType.EnergySupply)
+        const esChipFactory = makeNode(NodeType.EnergySupply)
+        const esElectronics = makeNode(NodeType.EnergySupply)
+        const esAssembly = makeNode(NodeType.EnergySupply)
+
         const connections: Connection[] = [
             // Foundry chain
             makeConn(ironMineA, 0, smelterA, 0), // IronOre  → Smelter   input[0]
@@ -141,10 +165,26 @@ describe("reachability", () => {
             makeConn(cableFactory, 0, chipFactory, 1), // Cables   → ChipFactory  input[1]
             makeConn(chipFactory, 0, electronics, 0), // Circuits → Electronics  input[0]
             makeConn(electronics, 0, assembly, 2), // ControlSystem → Assembly input[2]
+
+            // Energy connections (one ES per factory)
+            makeEnergyConn(esIronMineA, ironMineA),
+            makeEnergyConn(esCoalMineA, coalMineA),
+            makeEnergyConn(esSmelterA, smelterA),
+            makeEnergyConn(esFoundry, foundry),
+            makeEnergyConn(esIronMineB, ironMineB),
+            makeEnergyConn(esCoalMineB, coalMineB),
+            makeEnergyConn(esSmelterB, smelterB),
+            makeEnergyConn(esCoalMineC, coalMineC),
+            makeEnergyConn(esEngineFactory, engineFactory),
+            makeEnergyConn(esCopperMine, copperMine),
+            makeEnergyConn(esSiliconMine, siliconMine),
+            makeEnergyConn(esCableFactory, cableFactory),
+            makeEnergyConn(esChipFactory, chipFactory),
+            makeEnergyConn(esElectronics, electronics),
+            makeEnergyConn(esAssembly, assembly),
         ]
 
         const nodes: NodeInstance[] = [
-            ...poolES,
             ironMineA,
             coalMineA,
             smelterA,
@@ -160,6 +200,21 @@ describe("reachability", () => {
             chipFactory,
             electronics,
             assembly,
+            esIronMineA,
+            esCoalMineA,
+            esSmelterA,
+            esFoundry,
+            esIronMineB,
+            esCoalMineB,
+            esSmelterB,
+            esCoalMineC,
+            esEngineFactory,
+            esCopperMine,
+            esSiliconMine,
+            esCableFactory,
+            esChipFactory,
+            esElectronics,
+            esAssembly,
         ]
 
         const state: GameState = {
@@ -175,7 +230,6 @@ describe("reachability", () => {
         }
 
         // The Assembly output buffer should contain at least 1 Rocket.
-        // First estimated Rocket appears around tick 1600-2000 given the chain above.
         expect(assembly.outputBuffers[0]!.amount).toBeGreaterThanOrEqual(1)
         expect(assembly.outputBuffers[0]!.resource).toBe(ResourceType.Rocket)
     })

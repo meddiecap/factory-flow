@@ -1,20 +1,22 @@
-import { describe, it, expect } from "vitest"
-import { calcSpeedFactor } from "../src/simulation/energy"
+import { describe, it, expect, beforeEach } from "vitest"
+import { calcNodeSpeedFactors } from "../src/simulation/energy"
 import { NODE_DEFS } from "../src/simulation/recipes"
-import { NodeType, ResourceType } from "../src/simulation/types"
-import type { NodeInstance } from "../src/simulation/types"
+import { NodeType } from "../src/simulation/types"
+import type { NodeInstance, Connection } from "../src/simulation/types"
 
-/** Minimal node instance factory. */
-function makeNode(
-    type: NodeType,
-    status: NodeInstance["status"] = "active",
-): NodeInstance {
+let _id = 0
+function nextId(): string {
+    return `n${++_id}`
+}
+
+/** Creates a minimal NodeInstance for the given type. */
+function makeNode(type: NodeType): NodeInstance {
     return {
-        id: `node-${Math.random()}`,
+        id: nextId(),
         type,
         position: { col: 0, row: 0 },
         progress: 0,
-        status,
+        status: "idle",
         inputBuffers: [],
         outputBuffers: [],
         speedUpgradeLevel: 0,
@@ -24,95 +26,123 @@ function makeNode(
     }
 }
 
-describe("calcSpeedFactor", () => {
-    it("returns 1.0 when fuel production exactly equals consumption", () => {
-        // ES produces 2 fuel / 40 ticks = 0.05 fuel/tick per node.
-        // IronMine consumes 0.5 fuel/tick per node.
-        // 10 ES → 0.5/tick produced; 1 IronMine → 0.5/tick consumed → ratio = 1.0.
-        const nodes: NodeInstance[] = [
-            ...Array.from({ length: 10 }, () =>
-                makeNode(NodeType.EnergySupply),
-            ),
-            makeNode(NodeType.IronMine),
-        ]
-        const factor = calcSpeedFactor(nodes, NODE_DEFS)
-        expect(factor).toBeCloseTo(1.0, 5)
+/** Creates an energy connection from an EnergySupply to a production factory. */
+function energyConn(
+    es: NodeInstance,
+    dotIndex: number,
+    factory: NodeInstance,
+): Connection {
+    const def = NODE_DEFS[factory.type]
+    return {
+        id: `ec-${es.id}-${dotIndex}->${factory.id}`,
+        fromNodeId: es.id,
+        fromDotIndex: dotIndex,
+        toNodeId: factory.id,
+        toDotIndex: def.inputs.length,
+        capacity: 0,
+        capacityUpgradeLevel: 0,
+        isEnergy: true,
+    }
+}
+
+describe("calcNodeSpeedFactors", () => {
+    beforeEach(() => {
+        _id = 0
     })
 
-    it("returns 0.5 when fuel supply is 50% of demand (deficit)", () => {
-        // 5 ES supply = 0.25/tick. 10 IronMines consume 5/tick. ratio = 0.25/5 = 0.05...
-        // Let's re-calculate: ES produces 2/tick output / 40 ticks = 0.05/tick per node.
-        // IronMine consumes 0.5/tick.
-        // For ratio 0.5 we need produced/consumed = 0.5, i.e. produced = consumed * 0.5.
-        // Use 1 ES (0.05/tick) and mines consuming 0.1/tick → 1 mine consumes 0.5, not 0.1.
-        // Better approach: just verify the ratio formula analytically.
-        // 1 ES + 1 IronMine: produced=0.05, consumed=0.5 → ratio = 0.1.
-        // Let's scale: 5 ES + 10 IronMines: produced=0.25, consumed=5 → ratio=0.05. Still not 0.5.
-        // Use 10 ES (produced=0.5/tick) and 1 IronMine (consumed=0.5/tick) → ratio=1.
-        // For 0.5: 5 ES (0.25/tick) and 1 IronMine (0.5/tick) → ratio = 0.5. ✓
-        const nodes: NodeInstance[] = [
-            ...Array.from({ length: 5 }, () => makeNode(NodeType.EnergySupply)),
-            makeNode(NodeType.IronMine),
-        ]
-        const factor = calcSpeedFactor(nodes, NODE_DEFS)
-        expect(factor).toBeCloseTo(0.5, 5)
+    it("factory with sufficient energy connection gets speedFactor 1.0", () => {
+        // EnergySupply outputs 1.0/tick. IronMine needs 0.5/tick → speedFactor = 1.0.
+        const es = makeNode(NodeType.EnergySupply)
+        const mine = makeNode(NodeType.IronMine)
+        const conn = energyConn(es, 0, mine)
+
+        const factors = calcNodeSpeedFactors([es, mine], [conn], NODE_DEFS)
+        expect(factors.get(mine.id)).toBeCloseTo(1.0, 5)
     })
 
-    it("returns 1.0 when no production nodes are active (no consumption)", () => {
-        const nodes: NodeInstance[] = []
-        const factor = calcSpeedFactor(nodes, NODE_DEFS)
-        expect(factor).toBe(1.0)
+    it("factory with insufficient energy gets speedFactor between 0 and 1", () => {
+        // EnergySupply outputs 1.0/tick shared between 2 mines (0.5/tick each).
+        // Each mine gets 0.5/tick, needs 0.5/tick → speedFactor = 1.0.
+        const es = makeNode(NodeType.EnergySupply)
+        const mine1 = makeNode(NodeType.IronMine)
+        const mine2 = makeNode(NodeType.IronMine)
+        const conn1 = energyConn(es, 0, mine1)
+        const conn2 = energyConn(es, 1, mine2)
+
+        const factors = calcNodeSpeedFactors(
+            [es, mine1, mine2],
+            [conn1, conn2],
+            NODE_DEFS,
+        )
+        // 1.0 / 2 = 0.5 per mine; need 0.5 → ratio = 1.0
+        expect(factors.get(mine1.id)).toBeCloseTo(1.0, 5)
+        expect(factors.get(mine2.id)).toBeCloseTo(1.0, 5)
     })
 
-    it("returns >1 when there is a surplus, applying logarithmic bonus", () => {
-        // Use enough ES so surplus = +10/tick above consumption.
-        // 1 IronMine consumes 0.5/tick.
-        // Need produced = consumed + 10 = 10.5/tick.
-        // Each ES produces 2/40 = 0.05/tick → need 210 ES for 10.5/tick.
-        // That's valid; formula: multiplier = 1 + 0.2 * ln(10 + 1) ≈ 1.479.
-        const esCount = 210 // produces 10.5/tick
-        const nodes: NodeInstance[] = [
-            ...Array.from({ length: esCount }, () =>
-                makeNode(NodeType.EnergySupply),
-            ),
-            makeNode(NodeType.IronMine), // consumes 0.5/tick
-        ]
-        const factor = calcSpeedFactor(nodes, NODE_DEFS)
-        // surplus ≈ 10.0, expected ≈ 1 + 0.2 * ln(11) ≈ 1.479
-        const expected = 1 + 0.2 * Math.log(11)
-        expect(factor).toBeCloseTo(expected, 1)
+    it("factory connected to ES that also feeds a high-need node gets partial speed", () => {
+        // EnergySupply 1.0/tick shared between IronMine (0.5/tick) and Smelter (1.0/tick).
+        // Each gets 0.5/tick. Mine: 0.5/0.5 = 1.0. Smelter: 0.5/1.0 = 0.5.
+        const es = makeNode(NodeType.EnergySupply)
+        const mine = makeNode(NodeType.IronMine)
+        const smelter = makeNode(NodeType.Smelter)
+        const c1 = energyConn(es, 0, mine)
+        const c2 = energyConn(es, 1, smelter)
+
+        const factors = calcNodeSpeedFactors(
+            [es, mine, smelter],
+            [c1, c2],
+            NODE_DEFS,
+        )
+        expect(factors.get(mine.id)).toBeCloseTo(1.0, 5)
+        expect(factors.get(smelter.id)).toBeCloseTo(0.5, 5)
     })
 
-    it("applies surplus multiplier from design table: +50 surplus → ≈ 1.9", () => {
-        // Need produced - consumed = 50.
-        // consumed = 0.5/tick (1 IronMine). produced = 50.5/tick.
-        // ES produces 0.05/tick → 1010 ES needed.
-        const esCount = 1010
-        const nodes: NodeInstance[] = [
-            ...Array.from({ length: esCount }, () =>
-                makeNode(NodeType.EnergySupply),
-            ),
-            makeNode(NodeType.IronMine),
-        ]
-        const factor = calcSpeedFactor(nodes, NODE_DEFS)
-        // formula: 1 + 0.2 * ln(50 + 1) ≈ 1.783; design table says ≈1.9 at +50.
-        // We test the formula, not the table approximation.
-        const expected = 1 + 0.2 * Math.log(50 + 1)
-        expect(factor).toBeCloseTo(expected, 1)
+    it("factory without energy connection gets speedFactor 0", () => {
+        const mine = makeNode(NodeType.IronMine)
+
+        const factors = calcNodeSpeedFactors([mine], [], NODE_DEFS)
+        expect(factors.get(mine.id)).toBe(0)
     })
 
-    it("counts Energy Supply even when its output buffer would have been full (improvement 8)", () => {
-        // Before improvement 8 an output-blocked ES was excluded from the pool.
-        // Now the node is never output-blocked, but we verify via calcSpeedFactor
-        // that an ES with status 'active' (full buffer scenario) is still counted.
-        // 10 ES at active status → same result as the baseline test.
-        const nodes: NodeInstance[] = [
-            ...Array.from({ length: 10 }, () =>
-                makeNode(NodeType.EnergySupply, "active"),
-            ),
-            makeNode(NodeType.IronMine),
-        ]
-        const factor = calcSpeedFactor(nodes, NODE_DEFS)
-        expect(factor).toBeCloseTo(1.0, 5)
+    it("EnergySupply itself gets speedFactor 1.0 (no energy needed)", () => {
+        const es = makeNode(NodeType.EnergySupply)
+
+        const factors = calcNodeSpeedFactors([es], [], NODE_DEFS)
+        expect(factors.get(es.id)).toBe(1.0)
+    })
+
+    it("utility nodes (Splitter, Market) get speedFactor 1.0", () => {
+        const splitter = makeNode(NodeType.Splitter)
+        const market = makeNode(NodeType.Market)
+
+        const factors = calcNodeSpeedFactors([splitter, market], [], NODE_DEFS)
+        expect(factors.get(splitter.id)).toBe(1.0)
+        expect(factors.get(market.id)).toBe(1.0)
+    })
+
+    it("energy efficiency upgrade reduces the energy required, raising speedFactor", () => {
+        // ES outputs 1.0/tick. Smelter normally needs 1.0/tick.
+        // With 1 energy efficiency upgrade: effective need = 1.0 * max(0.5, 1 - 0.1) = 0.9/tick.
+        // speedFactor = 1.0 / 0.9 → clamped to 1.0 (sufficient supply).
+        // For a case where supply is 50%: use 2 smelters sharing 1 ES.
+        // Each smelter gets 0.5/tick; with upgrade need = 0.9 → speedFactor = 0.5/0.9 ≈ 0.556.
+        const es = makeNode(NodeType.EnergySupply)
+        const smelterA = makeNode(NodeType.Smelter)
+        const smelterB: NodeInstance = {
+            ...makeNode(NodeType.Smelter),
+            energyEfficiencyUpgradeLevel: 1,
+        }
+        const c1 = energyConn(es, 0, smelterA)
+        const c2 = energyConn(es, 1, smelterB)
+
+        const factors = calcNodeSpeedFactors(
+            [es, smelterA, smelterB],
+            [c1, c2],
+            NODE_DEFS,
+        )
+        // smelterA: 0.5 / 1.0 = 0.5
+        expect(factors.get(smelterA.id)).toBeCloseTo(0.5, 5)
+        // smelterB: 0.5 / 0.9 ≈ 0.556
+        expect(factors.get(smelterB.id)).toBeCloseTo(0.5 / 0.9, 5)
     })
 })

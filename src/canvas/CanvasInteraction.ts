@@ -1,5 +1,6 @@
 import Konva from "konva"
 import { NODE_DEFS } from "../simulation/recipes"
+import { NodeType } from "../simulation/types"
 import type { GameState, NodeInstance } from "../simulation/types"
 
 /** Width and height of one grid cell in pixels. */
@@ -55,17 +56,36 @@ function outputDotPos(node: NodeInstance, dotIndex: number): [number, number] {
     ]
 }
 
-/** Pixel position of an input dot. */
-function inputDotPos(node: NodeInstance, dotIndex: number): [number, number] {
+/** Pixel position of an energy output dot on EnergySupply given total count. */
+function energyOutputDotPos(
+    node: NodeInstance,
+    dotIndex: number,
+    totalDots: number,
+): [number, number] {
     const def = NODE_DEFS[node.type]
     return [
+        colToPx(node.position.col) + def.gridSize.width * CELL_SIZE,
+        dotY(node.position.row, dotIndex, totalDots, def.gridSize.height),
+    ]
+}
+
+/** Pixel position of an input dot, accounting for any energy input dot in the spacing. */
+function inputDotPos(node: NodeInstance, dotIndex: number): [number, number] {
+    const def = NODE_DEFS[node.type]
+    const total = def.hasEnergyInput ? def.inputs.length + 1 : def.inputs.length
+    return [
         colToPx(node.position.col),
-        dotY(
-            node.position.row,
-            dotIndex,
-            def.inputs.length,
-            def.gridSize.height,
-        ),
+        dotY(node.position.row, dotIndex, total, def.gridSize.height),
+    ]
+}
+
+/** Pixel position of the energy input dot on a production factory. */
+function energyInputDotPos(node: NodeInstance): [number, number] {
+    const def = NODE_DEFS[node.type]
+    const total = def.inputs.length + 1 // recipe inputs + energy
+    return [
+        colToPx(node.position.col),
+        dotY(node.position.row, def.inputs.length, total, def.gridSize.height),
     ]
 }
 
@@ -268,26 +288,51 @@ export class CanvasInteraction {
         for (const node of state.nodes) {
             const def = NODE_DEFS[node.type]
 
-            // Output dots
-            for (let i = 0; i < def.outputs.length; i++) {
-                const [x, y] = outputDotPos(node, i)
-                const circle = new Konva.Circle({
-                    name: "dot-hit",
-                    x,
-                    y,
-                    radius: DOT_HIT_RADIUS,
-                    fill: "transparent",
-                })
-                circle.setAttr("dotNodeId", node.id)
-                circle.setAttr("dotIndex", i)
-                circle.setAttr("dotSide", "output")
-                circle.on("mousedown touchstart", () =>
-                    this._startDotInteraction(node.id, i, "output", x, y),
+            if (node.type === NodeType.EnergySupply) {
+                // EnergySupply: dynamic energy output dots (N connected + 1 free).
+                const energyConns = state.connections.filter(
+                    (c) => c.isEnergy && c.fromNodeId === node.id,
                 )
-                this.dragLayer.add(circle)
+                const totalDots = energyConns.length + 1
+                for (let i = 0; i < totalDots; i++) {
+                    const [x, y] = energyOutputDotPos(node, i, totalDots)
+                    const circle = new Konva.Circle({
+                        name: "dot-hit",
+                        x,
+                        y,
+                        radius: DOT_HIT_RADIUS,
+                        fill: "transparent",
+                    })
+                    circle.setAttr("dotNodeId", node.id)
+                    circle.setAttr("dotIndex", i)
+                    circle.setAttr("dotSide", "output")
+                    circle.on("mousedown touchstart", () =>
+                        this._startDotInteraction(node.id, i, "output", x, y),
+                    )
+                    this.dragLayer.add(circle)
+                }
+            } else {
+                // Regular output dots
+                for (let i = 0; i < def.outputs.length; i++) {
+                    const [x, y] = outputDotPos(node, i)
+                    const circle = new Konva.Circle({
+                        name: "dot-hit",
+                        x,
+                        y,
+                        radius: DOT_HIT_RADIUS,
+                        fill: "transparent",
+                    })
+                    circle.setAttr("dotNodeId", node.id)
+                    circle.setAttr("dotIndex", i)
+                    circle.setAttr("dotSide", "output")
+                    circle.on("mousedown touchstart", () =>
+                        this._startDotInteraction(node.id, i, "output", x, y),
+                    )
+                    this.dragLayer.add(circle)
+                }
             }
 
-            // Input dots — also interactive for reconnect/remove
+            // Recipe input dots — also interactive for reconnect/remove
             for (let i = 0; i < def.inputs.length; i++) {
                 const [x, y] = inputDotPos(node, i)
                 const circle = new Konva.Circle({
@@ -302,6 +347,32 @@ export class CanvasInteraction {
                 circle.setAttr("dotSide", "input")
                 circle.on("mousedown touchstart", () =>
                     this._startDotInteraction(node.id, i, "input", x, y),
+                )
+                this.dragLayer.add(circle)
+            }
+
+            // Energy input dot — production factories only.
+            if (def.hasEnergyInput) {
+                const energyDotIdx = def.inputs.length
+                const [x, y] = energyInputDotPos(node)
+                const circle = new Konva.Circle({
+                    name: "dot-hit",
+                    x,
+                    y,
+                    radius: DOT_HIT_RADIUS,
+                    fill: "transparent",
+                })
+                circle.setAttr("dotNodeId", node.id)
+                circle.setAttr("dotIndex", energyDotIdx)
+                circle.setAttr("dotSide", "input")
+                circle.on("mousedown touchstart", () =>
+                    this._startDotInteraction(
+                        node.id,
+                        energyDotIdx,
+                        "input",
+                        x,
+                        y,
+                    ),
                 )
                 this.dragLayer.add(circle)
             }

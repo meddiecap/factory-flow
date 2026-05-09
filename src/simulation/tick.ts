@@ -30,12 +30,12 @@ export function effectiveInputAmount(base: number, level: number): number {
 /**
  * Advances one production node by one simulation tick.
  * Handles progress accumulation, cycle completion, input/output buffer management,
- * and status transitions (active, waiting, output-blocked).
+ * and status transitions (active, waiting, output-blocked, no-energy).
  * Called by the main simulator for every non-utility node each tick.
  *
  * @param node - The runtime node instance to advance.
  * @param def - The static definition for this node type.
- * @param speedFactor - Global speed multiplier derived from the energy system (0–2+).
+ * @param speedFactor - Per-node speed multiplier derived from the energy system (0–1).
  */
 export function tickNode(
     node: NodeInstance,
@@ -45,19 +45,21 @@ export function tickNode(
     // Utility / pass-through nodes are handled elsewhere.
     if (def.cycleDuration === 0) return
 
-    // --- Output-blocked check (skipped for Energy Supply) ---
-    // Energy Supply overflows its buffer silently instead of stopping, so the
-    // global energy pool is never cut off by a full local buffer (improvement 8).
-    if (!isEnergySupply(node.type)) {
-        const outputFull = def.outputs.some((out, i) => {
-            const buf = node.outputBuffers[i]
-            return buf !== undefined && buf.amount >= buf.capacity
-        })
+    // No energy connection → factory is completely stopped.
+    if (def.hasEnergyInput && speedFactor === 0) {
+        node.status = "no-energy"
+        return
+    }
 
-        if (outputFull) {
-            node.status = "output-blocked"
-            return
-        }
+    // --- Output-blocked check ---
+    const outputFull = def.outputs.some((out, i) => {
+        const buf = node.outputBuffers[i]
+        return buf !== undefined && buf.amount >= buf.capacity
+    })
+
+    if (outputFull) {
+        node.status = "output-blocked"
+        return
     }
 
     // --- Input check: does the node have enough resources for one cycle? ---

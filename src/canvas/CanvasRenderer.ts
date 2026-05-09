@@ -20,6 +20,9 @@ const DOT_INPUT_COLOR = "#60a5fa" // Tailwind blue-400
 /** Colour of output dots (right side of a node). */
 const DOT_OUTPUT_COLOR = "#4ade80" // Tailwind green-400
 
+/** Colour of energy dots and energy connection lines. */
+const ENERGY_DOT_COLOR = "#facc15" // Tailwind yellow-400
+
 /** Background colour of the grid canvas. */
 const BACKGROUND_COLOR = "#111827" // Tailwind gray-900
 
@@ -148,6 +151,7 @@ const STATUS_COLORS: Record<string, string> = {
     waiting: "#f97316", // orange-500
     "output-blocked": "#ef4444", // red-500
     idle: "#6b7280", // gray-500
+    "no-energy": "#4b5563", // gray-600 – darker grey, no energy
 }
 
 /** Visual colours for each resource type, used for particle animations. */
@@ -204,12 +208,18 @@ function _upgradeText(node: NodeInstance): string | null {
 /**
  * Draws a single node as a rectangle with label, input/output dots and a status bar.
  * Production nodes show a cycle-progress bar; Splitter shows its ratio; Warehouse
- * shows its buffer fill fraction.
+ * shows its buffer fill fraction. EnergySupply receives a dynamic output dot count.
  *
  * @param layer - The Konva layer to draw onto.
  * @param node - Runtime node instance with position data.
+ * @param energyOutputCount - For EnergySupply: number of existing energy connections
+ *   (the total dots rendered = energyOutputCount + 1 free). Ignored for other types.
  */
-function drawNode(layer: Konva.Layer, node: NodeInstance): void {
+function drawNode(
+    layer: Konva.Layer,
+    node: NodeInstance,
+    energyOutputCount = 0,
+): void {
     const def = NODE_DEFS[node.type]
     const x = colToPx(node.position.col)
     const y = rowToPx(node.position.row)
@@ -261,13 +271,22 @@ function drawNode(layer: Konva.Layer, node: NodeInstance): void {
         )
     }
 
-    // Input dots (left edge, blue)
+    // Input dots (left edge)
     const inputCount = def.inputs.length
+    // When the node has an energy input dot, include it in the spacing calculation
+    // so all dots (recipe + energy) are evenly distributed in the node height.
+    const totalInputDots = def.hasEnergyInput ? inputCount + 1 : inputCount
+
     for (let i = 0; i < inputCount; i++) {
         layer.add(
             new Konva.Circle({
                 x: x,
-                y: dotY(node.position.row, i, inputCount, def.gridSize.height),
+                y: dotY(
+                    node.position.row,
+                    i,
+                    totalInputDots,
+                    def.gridSize.height,
+                ),
                 radius: DOT_RADIUS,
                 fill: DOT_INPUT_COLOR,
                 stroke: "#1e40af",
@@ -276,19 +295,65 @@ function drawNode(layer: Konva.Layer, node: NodeInstance): void {
         )
     }
 
-    // Output dots (right edge, green)
-    const outputCount = def.outputs.length
-    for (let i = 0; i < outputCount; i++) {
+    // Energy input dot (left edge, yellow) – production factories only.
+    if (def.hasEnergyInput) {
         layer.add(
             new Konva.Circle({
-                x: x + w,
-                y: dotY(node.position.row, i, outputCount, def.gridSize.height),
+                x: x,
+                y: dotY(
+                    node.position.row,
+                    inputCount,
+                    totalInputDots,
+                    def.gridSize.height,
+                ),
                 radius: DOT_RADIUS,
-                fill: DOT_OUTPUT_COLOR,
-                stroke: "#166534",
+                fill: ENERGY_DOT_COLOR,
+                stroke: "#b45309",
                 strokeWidth: 1,
             }),
         )
+    }
+
+    // Output dots (right edge)
+    if (node.type === NodeType.EnergySupply) {
+        // EnergySupply: dynamic output dots (yellow). Always show N connected + 1 free.
+        const totalEnergyDots = energyOutputCount + 1
+        for (let i = 0; i < totalEnergyDots; i++) {
+            layer.add(
+                new Konva.Circle({
+                    x: x + w,
+                    y: dotY(
+                        node.position.row,
+                        i,
+                        totalEnergyDots,
+                        def.gridSize.height,
+                    ),
+                    radius: DOT_RADIUS,
+                    fill: ENERGY_DOT_COLOR,
+                    stroke: "#b45309",
+                    strokeWidth: 1,
+                }),
+            )
+        }
+    } else {
+        const outputCount = def.outputs.length
+        for (let i = 0; i < outputCount; i++) {
+            layer.add(
+                new Konva.Circle({
+                    x: x + w,
+                    y: dotY(
+                        node.position.row,
+                        i,
+                        outputCount,
+                        def.gridSize.height,
+                    ),
+                    radius: DOT_RADIUS,
+                    fill: DOT_OUTPUT_COLOR,
+                    stroke: "#166534",
+                    strokeWidth: 1,
+                }),
+            )
+        }
     }
 
     // ---- Status indicator (bottom of node body) ----
@@ -392,8 +457,34 @@ function outputDotPos(node: NodeInstance, dotIndex: number): [number, number] {
 }
 
 /**
+ * Returns the pixel [x, y] of an energy output dot on an EnergySupply for a
+ * specific connection, given the total number of energy output dots shown.
+ *
+ * @param node - The EnergySupply node.
+ * @param dotIndex - Zero-based energy output dot index.
+ * @param totalEnergyDots - Total number of energy dots rendered (connected + 1 free).
+ * @returns [x, y] pixel coordinates.
+ */
+function energyOutputDotPos(
+    node: NodeInstance,
+    dotIndex: number,
+    totalEnergyDots: number,
+): [number, number] {
+    const def = NODE_DEFS[node.type]
+    const x = colToPx(node.position.col) + def.gridSize.width * CELL_SIZE
+    const y = dotY(
+        node.position.row,
+        dotIndex,
+        totalEnergyDots,
+        def.gridSize.height,
+    )
+    return [x, y]
+}
+
+/**
  * Returns the pixel [x, y] of an input dot for a given node and dot index.
- * Used to compute connection end points.
+ * When the node has an energy input dot, the total is increased by 1 so recipe
+ * input dots and the energy dot are evenly spaced within the node height.
  *
  * @param node - Target node instance.
  * @param dotIndex - Zero-based input dot index.
@@ -401,8 +492,8 @@ function outputDotPos(node: NodeInstance, dotIndex: number): [number, number] {
  */
 function inputDotPos(node: NodeInstance, dotIndex: number): [number, number] {
     const def = NODE_DEFS[node.type]
+    const total = def.hasEnergyInput ? def.inputs.length + 1 : def.inputs.length
     const x = colToPx(node.position.col)
-    const total = def.inputs.length
     const y = dotY(node.position.row, dotIndex, total, def.gridSize.height)
     return [x, y]
 }
@@ -416,6 +507,7 @@ function inputDotPos(node: NodeInstance, dotIndex: number): [number, number] {
  * @param y1 - Start y.
  * @param x2 - End x.
  * @param y2 - End y.
+ * @param color - Stroke colour (defaults to the standard connection grey).
  */
 function drawManhattanLine(
     layer: Konva.Layer,
@@ -423,12 +515,13 @@ function drawManhattanLine(
     y1: number,
     x2: number,
     y2: number,
+    color: string = CONNECTION_COLOR,
 ): void {
     const midX = x1 + (x2 - x1) / 2
     layer.add(
         new Konva.Line({
             points: [x1, y1, midX, y1, midX, y2, x2, y2],
-            stroke: CONNECTION_COLOR,
+            stroke: color,
             strokeWidth: 2,
             lineJoin: "round",
         }),
@@ -437,6 +530,7 @@ function drawManhattanLine(
 
 /**
  * Draws all connections between nodes as Manhattan-routed polylines.
+ * Energy connections are drawn in yellow; resource connections in grey.
  *
  * @param layer - The Konva layer to draw onto.
  * @param connections - All active connections in the game state.
@@ -452,9 +546,23 @@ function drawConnections(
         const tgt = nodeMap.get(conn.toNodeId)
         if (src === undefined || tgt === undefined) continue
 
-        const [x1, y1] = outputDotPos(src, conn.fromDotIndex)
-        const [x2, y2] = inputDotPos(tgt, conn.toDotIndex)
-        drawManhattanLine(layer, x1, y1, x2, y2)
+        let x1: number, y1: number, x2: number, y2: number
+
+        if (conn.isEnergy) {
+            // EnergySupply output: dynamic dot count = connected energy outputs + 1 free.
+            const energyCount = connections.filter(
+                (c) => c.isEnergy && c.fromNodeId === src.id,
+            ).length
+            const totalDots = energyCount + 1
+            ;[x1, y1] = energyOutputDotPos(src, conn.fromDotIndex, totalDots)
+            ;[x2, y2] = inputDotPos(tgt, NODE_DEFS[tgt.type].inputs.length)
+        } else {
+            ;[x1, y1] = outputDotPos(src, conn.fromDotIndex)
+            ;[x2, y2] = inputDotPos(tgt, conn.toDotIndex)
+        }
+
+        const color = conn.isEnergy ? ENERGY_DOT_COLOR : CONNECTION_COLOR
+        drawManhattanLine(layer, x1, y1, x2, y2, color)
     }
 }
 
@@ -522,7 +630,14 @@ export class CanvasRenderer {
         drawConnections(this.connectionLayer, state.connections, nodeMap)
 
         for (const node of state.nodes) {
-            drawNode(this.nodeLayer, node)
+            // For EnergySupply: count how many energy connections it currently has.
+            const energyOutputCount =
+                node.type === NodeType.EnergySupply
+                    ? state.connections.filter(
+                          (c) => c.isEnergy && c.fromNodeId === node.id,
+                      ).length
+                    : 0
+            drawNode(this.nodeLayer, node, energyOutputCount)
         }
 
         // Kill particles for connections that no longer exist.
