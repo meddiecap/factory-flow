@@ -526,7 +526,7 @@ export class CanvasInteraction {
                 if (hit !== null) {
                     const fromNodeId =
                         rd.grabbedSide === "output"
-                            ? hit.nodeId  // grabbed output → replace source
+                            ? hit.nodeId // grabbed output → replace source
                             : rd.originalFromNodeId
                     const fromDotIndex =
                         rd.grabbedSide === "output"
@@ -534,7 +534,7 @@ export class CanvasInteraction {
                             : rd.originalFromDotIndex
                     const toNodeId =
                         rd.grabbedSide === "input"
-                            ? hit.nodeId  // grabbed input → replace destination
+                            ? hit.nodeId // grabbed input → replace destination
                             : rd.originalToNodeId
                     const toDotIndex =
                         rd.grabbedSide === "input"
