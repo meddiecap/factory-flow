@@ -8,10 +8,10 @@ import { tick, checkWin } from './simulation/simulator'
 import { tickMarket } from './simulation/economy'
 import { saveState, loadState, clearState } from './simulation/persistence'
 import { initSequences } from './simulation/useGameState'
-import PalettePanel from './ui/PalettePanel.vue'
-import HudBar from './ui/HudBar.vue'
-import DetailPanel from './ui/DetailPanel.vue'
-import WinScreen from './ui/WinScreen.vue'
+import PalettePanel from './components/PalettePanel.vue'
+import HudBar from './components/HudBar.vue'
+import DetailPanel from './components/DetailPanel.vue'
+import WinScreen from './components/WinScreen.vue'
 
 const canvasWidth = GRID_COLS * CELL_SIZE
 const canvasHeight = GRID_ROWS * CELL_SIZE
