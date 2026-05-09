@@ -54,7 +54,7 @@ export function applyUpgrade(
         }
 
         case "efficiency": {
-            if (def.inputs.length === 0) return false
+            if (def.inputs.length === 0 || def.cycleDuration === 0) return false
             const cost = upgradeCost(def.buildCost, node.efficiencyUpgradeLevel)
             if (state.money < cost) return false
             state.money -= cost

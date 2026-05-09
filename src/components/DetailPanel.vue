@@ -54,10 +54,12 @@ const hasSpeedUpgrade = computed(() => {
     return !noSpeed.includes(node.value.type)
 })
 
-/** Whether this node type can use the Efficiency upgrade (production nodes with inputs). */
-const hasEfficiencyUpgrade = computed(
-    () => node.value != null && (def.value?.inputs.length ?? 0) > 0,
-)
+/** Whether this node type can use the Efficiency upgrade (production nodes with inputs and a cycle). */
+const hasEfficiencyUpgrade = computed(() => {
+    if (!node.value) return false
+    const noEfficiency: NodeType[] = [NodeType.Splitter, NodeType.Warehouse, NodeType.Market, NodeType.EnergySupply]
+    return !noEfficiency.includes(node.value.type) && (def.value?.inputs.length ?? 0) > 0
+})
 
 /** Whether this node type consumes fuel (energy efficiency upgrade applicable). */
 const hasEnergyEfficiencyUpgrade = computed(
