@@ -339,6 +339,36 @@ Een aparte uitdagingsmodus met een tijdslimiet per run. Geen effect op het hoofd
 - Inklapbare **Node Groups** voor organisatie van complexe subsystemen
 - **Markt-verkooppunten indicator**: in de NodeDetail-panel van een Markt-node staat per verkooppunt (per aangesloten invoer-dot) welke resource er doorheen loopt en hoeveel dat op dit moment per seconde oplevert (berekend als gemiddelde over de laatste seconde)
 
+### 9.1 UI-layout
+
+De interface bestaat uit drie vaste zones:
+
+```
+┌────────────┬────────────────────────┬────────────┐
+│  Palet      │       Canvas          │  Detail    │
+│  (sidebar)  │       (Konva.js)      │  (panel)   │
+│            │                        │            │
+│ Fabriek-   │  Drag node naar grid  │ Gesloten   │
+│ iconen per │  Verbind dots          │ tenzij node│
+│ categorie  │  Zoom/pan             │ geselecteerd│
+└────────────┴────────────────────────┴────────────┘
+```
+
+**Palet (links):** lijst van beschikbare fabrieken gegroepeerd per laag. Grijsgedimde items zijn nog niet vrijgespeeld. Sleepen vanuit het palet plaatst de fabriek op het canvas.
+
+**Canvas (midden):** het speelveld. Klik op een node om die te selecteren en het Detail-panel te openen.
+
+**Detail-panel (rechts):** toont voor de geselecteerde node: naam, status, bufferinhoud, throughput, uptime %, beschikbare upgrades met kosten en terugverdientijd. Ook: knop om node te verwijderen.
+
+### 9.2 Overlays en modals
+
+| Actie             | UI-patroon                                                                   |
+| ----------------- | ---------------------------------------------------------------------------- |
+| Tech tree openen  | Fullscreen modal, sluitbaar met Escape of kruisknop                          |
+| Winscherm         | Fullscreen overlay na assemblage Raket; toont eindtijd, optie om te resetten |
+| Schematic opslaan | Modal: naam invoeren, bevestigen                                             |
+| Canvas uitbreiden | Knop in HUD-balk (boven canvas); toont kosten vóór bevestiging               |
+
 ---
 
 ## 10. Technische Richting
@@ -347,7 +377,8 @@ Een aparte uitdagingsmodus met een tijdslimiet per run. Geen effect op het hoofd
 - **Taal**: TypeScript (geen framework op het canvas zelf)
 - **UI-laag**: Vue.js voor panelen, menus, upgrades en HUD buiten het canvas
 - **Styling**: TailwindCSS voor de opmaak van Vue-componenten
-- **Canvas-libraries**: Konva.js of custom canvas (geen React Flow)
+- **Canvas-library**: **Konva.js** (biedt kant-en-klare drag-and-drop, event-handling en layering; geen custom canvas)
+- **Verbindingsrouting**: Manhattan-routing langs gridcellen (rechte hoeken, geen diagonalen); kruisingen visueel onderscheiden via een stippelpatroon op het overlappende segment
 - **Grid**: vaste celgrootte; nodes snappen in op gridposities
 - **Node-representatie**: elke fabriek beslaat één of meer gridcellen; gekleurde cirkels op de linkerrand zijn invoerpunten, op de rechterrand uitvoerpunten; lijnen worden gesleept van uitvoer naar invoer
 - **Input**: muis en toetsenbord (PC); drag-and-drop via muisevents
@@ -382,8 +413,26 @@ Elke node houdt een `progress: number` (float 0.0–N) bij die elke tick met `sn
 
 1. **Cyclus-start check**: vóór de start controleert de node of de invoerbuffer voldoende eenheden bevat voor de volledige cyclus. Zo niet, wacht de node (status: `waiting`) zonder `progress` op te hogen.
 2. **Inputs aftrekken**: bij cyclus-start worden de benodigde inputs direct uit de invoerbuffer afgetrokken.
-3. **Output toevoegen**: bij cyclus-einde worden de outputs aan de uitvoerbuffer toegevoegd (mits buffer niet vol; anders stopt de cyclus en worden reeds afgetrokken inputs niet teruggegeven — de cyclus is afgerond, de output wacht intern).
+3. **Output toevoegen**: bij cyclus-einde worden de outputs aan de uitvoerbuffer toegevoegd. Als de uitvoerbuffer vol is, **blokkeert de nieuwe output de volgende cyclus** — de fabriek wacht (status: `output-blocked`) tot er ruimte vrijkomt. Reeds afgetrokken inputs worden niet teruggegeven.
 4. `progress` wordt met `cyclusduur` verminderd (zodat overloop in de volgende cyclus doorloopt).
+
+### 13.2 Brandstof bij stilstand
+
+Een fabriek met status `waiting` of `output-blocked` verbruikt **geen brandstof/tick**. Alleen actief producerende fabrieken tellen mee in de globale energiebalans. Dit geeft de speler een incentive om bottlenecks op te lossen: stilstaande fabrieken besparen energie maar produceren ook niets.
+
+### 13.3 Snelheidsfactor bij brandstoftekort
+
+```
+speedFactor = clamp(beschikbaarBrandstof / benodigdBrandstof, 0, 1) × energieSurplusMultiplier
+progress += speedFactor per tick
+```
+
+Bij een tekort schaalt `speedFactor` lineair van 1 naar 0. Bij 0 staat alles stil. De surplus-multiplier (sectie 5.3) wordt daarna toegepast, maar heeft alleen effect als `speedFactor > 0`.
+
+### 13.4 Startposities van initieel geplaatste nodes
+
+- **IJzermijn**: kolom 2, rij 5 (linkerhelft van het 20×12 grid)
+- **Energy Supply**: kolom 5, rij 5
 
 ## 14. Implementatieaanbevelingen
 
@@ -391,10 +440,11 @@ Elke node houdt een `progress: number` (float 0.0–N) bij die elke tick met `sn
 
 Elke feature en elk stukje simulatielogica krijgt geautomatiseerde tests in `./__tests__/`. Er is geen limiet op het aantal tests — dekking is leidend, niet een getal. Als balanswaarden in dit document wijzigen, falen de betrokken tests direct — wat inconsistenties tussen ontwerp en implementatie voorkomt.
 
-| Testtype              | Wat het verifieert                                                                                                                                                 | Status                                                            |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- |
-| **Simulatietest**     | Geef een keten nodes op, draai N ticks, assert verwachte output op basis van recepten in 4.5                                                                       | ✅ Klaar                                                          |
-| **Balancetest**       | Bereken terugverdientijd (upgradekosten ÷ extra opbrengst/sec) per fabriek op basis van de nieuwe cyclustijden uit 4.5 en herbalanceerde tabel uit 6.1             | ⚠️ Aanpassen — cyclustijden ×40 en opbrengsten/sec zijn gewijzigd |
-| **Incometest**        | Start met €0 + IJzermijn + Energy Supply (beide gratis), controleer of na X ticks voldoende geld is voor de volgende fabriek (tech tree progressie uit sectie 7.1) | ⚠️ Aanpassen — startconditie gewijzigd (nu 2 nodes)               |
-| **Reachability-test** | Verifieer dat de volledige raket-keten (sectie 8.1) geen doodlopende afhankelijkheden bevat                                                                        | ✅ Klaar                                                          |
-| **Energietest**       | Assert dat een Energy Supply-surplus de productiesnelheid correct schaalt per de tabel in 5.3                                                                      | ✅ Klaar                                                          |
+| Testtype              | Wat het verifieert                                                                                                                                          |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Simulatietest**     | Geef een keten nodes op, draai N ticks, assert verwachte output op basis van recepten in 4.5                                                                |
+| **Balancetest**       | Bereken terugverdientijd (upgradekosten ÷ extra opbrengst/sec) per fabriek op basis van cyclustijden uit 4.5 en tabel uit 6.1                               |
+| **Incometest**        | Start met €0 + IJzermijn + Energy Supply (beide gratis), controleer of na X ticks voldoende geld is voor de volgende fabriek (tech tree progressie uit 7.1) |
+| **Reachability-test** | Verifieer dat de volledige raket-keten (sectie 8.1) geen doodlopende afhankelijkheden bevat                                                                 |
+| **Energietest**       | Assert dat een Energy Supply-surplus de productiesnelheid correct schaalt per formule in 5.3                                                                |
+| **Randgevaltest**     | Volle uitvoerbuffer blokkeert volgende cyclus; stilstaande fabriek verbruikt 0 brandstof; speedFactor schaalt lineair bij tekort (sectie 13.2–13.3)         |
