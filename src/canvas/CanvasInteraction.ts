@@ -518,28 +518,26 @@ export class CanvasInteraction {
                 // No movement → treat as click → prompt delete.
                 this.callbacks.onClickOccupiedDot(rd.connectionId)
             } else if (pos !== null) {
-                // Determine which side is the free "moving" end and which is fixed.
-                // The grabbed side is being moved; the opposite side stays.
-                const targetSide: "input" | "output" =
-                    rd.grabbedSide === "output" ? "input" : "output"
+                // Drop on a dot of the SAME type as the grabbed side:
+                // grabbing an output → drop on a new output → change the source.
+                // grabbing an input  → drop on a new input  → change the destination.
+                const targetSide: "input" | "output" = rd.grabbedSide
                 const hit = this._findNearestDot(pos, targetSide)
                 if (hit !== null) {
-                    // Grabbed the output end → moving WHERE this output goes → hit is a new INPUT dot.
-                    // Grabbed the input end → moving WHERE this input comes FROM → hit is a new OUTPUT dot.
                     const fromNodeId =
-                        rd.grabbedSide === "input"
-                            ? hit.nodeId // grabbed input end → change source → hit is OUTPUT dot
+                        rd.grabbedSide === "output"
+                            ? hit.nodeId  // grabbed output → replace source
                             : rd.originalFromNodeId
                     const fromDotIndex =
-                        rd.grabbedSide === "input"
+                        rd.grabbedSide === "output"
                             ? hit.dotIndex
                             : rd.originalFromDotIndex
                     const toNodeId =
-                        rd.grabbedSide === "output"
-                            ? hit.nodeId // grabbed output end → change destination → hit is INPUT dot
+                        rd.grabbedSide === "input"
+                            ? hit.nodeId  // grabbed input → replace destination
                             : rd.originalToNodeId
                     const toDotIndex =
-                        rd.grabbedSide === "output"
+                        rd.grabbedSide === "input"
                             ? hit.dotIndex
                             : rd.originalToDotIndex
                     this.callbacks.onReconnect(
