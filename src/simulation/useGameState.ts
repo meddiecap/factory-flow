@@ -191,8 +191,113 @@ export function moveNode(nodeId: string, col: number, row: number): void {
 }
 
 /**
+ * Removes a connection by id.
+ * The goods flow through that connection stops immediately.
+ *
+ * @param connectionId - Id of the connection to remove.
+ */
+export function removeConnection(connectionId: string): void {
+    const idx = gameState.connections.findIndex((c) => c.id === connectionId)
+    if (idx !== -1) gameState.connections.splice(idx, 1)
+}
+
+/**
+ * Returns true when adding an edge from `fromId` to `toId` would create a cycle
+ * in the directed connection graph. Uses iterative depth-first search from `toId`.
+ * A self-loop (fromId === toId) is also considered a cycle.
+ *
+ * @param fromId - Proposed source node id.
+ * @param toId - Proposed target node id.
+ * @param connections - Current connection list to traverse.
+ */
+function wouldCreateCycle(
+    fromId: string,
+    toId: string,
+    connections: Connection[],
+): boolean {
+    if (fromId === toId) return true
+    // DFS: can we reach `fromId` starting from `toId`?
+    const visited = new Set<string>()
+    const stack = [toId]
+    while (stack.length > 0) {
+        const current = stack.pop()!
+        if (current === fromId) return true
+        if (visited.has(current)) continue
+        visited.add(current)
+        for (const c of connections) {
+            if (c.fromNodeId === current) stack.push(c.toNodeId)
+        }
+    }
+    return false
+}
+
+/**
+ * Reconnects an existing connection to new endpoints.
+ * The original connection is restored unchanged if validation fails:
+ * - new endpoints have the same validity rules as addConnection
+ * - cycles (A→B→…→A) and self-loops are rejected
+ *
+ * @param connectionId - Id of the connection to modify.
+ * @param fromNodeId - New source node id.
+ * @param fromDotIndex - New output dot index on the source node.
+ * @param toNodeId - New target node id.
+ * @param toDotIndex - New input dot index on the target node.
+ * @returns `true` when the reconnection succeeded, `false` when rejected.
+ */
+export function reconnectConnection(
+    connectionId: string,
+    fromNodeId: string,
+    fromDotIndex: number,
+    toNodeId: string,
+    toDotIndex: number,
+): boolean {
+    const conn = gameState.connections.find((c) => c.id === connectionId)
+    if (conn === undefined) return false
+
+    // Build the connection list without this connection for cycle/dot checks.
+    const others = gameState.connections.filter((c) => c.id !== connectionId)
+
+    if (wouldCreateCycle(fromNodeId, toNodeId, others)) return false
+
+    // Check that no other connection already uses either dot.
+    const dotConflict = others.some(
+        (c) =>
+            (c.fromNodeId === fromNodeId && c.fromDotIndex === fromDotIndex) ||
+            (c.toNodeId === toNodeId && c.toDotIndex === toDotIndex),
+    )
+    if (dotConflict) return false
+
+    conn.fromNodeId = fromNodeId
+    conn.fromDotIndex = fromDotIndex
+    conn.toNodeId = toNodeId
+    conn.toDotIndex = toDotIndex
+    return true
+}
+
+/**
+ * Returns the connection that uses the given dot, or undefined when the dot is free.
+ * Used by the interaction layer to detect occupied dots.
+ *
+ * @param nodeId - The node id to check.
+ * @param dotIndex - The dot index to check.
+ * @param side - 'input' or 'output'.
+ */
+export function connectionAtDot(
+    nodeId: string,
+    dotIndex: number,
+    side: "input" | "output",
+): Connection | undefined {
+    return gameState.connections.find((c) =>
+        side === "output"
+            ? c.fromNodeId === nodeId && c.fromDotIndex === dotIndex
+            : c.toNodeId === nodeId && c.toDotIndex === dotIndex,
+    )
+}
+
+/**
  * Adds a directed connection from an output dot to an input dot.
- * Validates that neither dot is already connected (one line per dot rule).
+ * Validates that neither dot is already connected (one line per dot rule),
+ * and that the connection would not create a cycle in the flow graph.
  *
  * @param fromNodeId - Source node id.
  * @param fromDotIndex - Output dot index on the source node.
@@ -207,6 +312,8 @@ export function addConnection(
     toDotIndex: number,
 ): boolean {
     if (fromNodeId === toNodeId) return false
+
+    if (wouldCreateCycle(fromNodeId, toNodeId, gameState.connections)) return false
 
     // Check one-line-per-dot rule
     const alreadyUsed = gameState.connections.some(

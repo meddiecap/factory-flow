@@ -3,7 +3,7 @@ import { onMounted, onUnmounted, watch, ref } from 'vue'
 import { CanvasRenderer, GRID_COLS, GRID_ROWS, CELL_SIZE } from './canvas/CanvasRenderer'
 import { CanvasInteraction } from './canvas/CanvasInteraction'
 import { NodeType } from './simulation/types'
-import { gameState, placeNode, addConnection, moveNode } from './simulation/useGameState'
+import { gameState, placeNode, addConnection, moveNode, removeConnection, reconnectConnection } from './simulation/useGameState'
 import { tick, checkWin } from './simulation/simulator'
 import { tickMarket } from './simulation/economy'
 import { saveState, loadState, clearState } from './simulation/persistence'
@@ -75,6 +75,16 @@ onMounted(() => {
     },
     onMoveNode(nodeId, col, row) {
       moveNode(nodeId, col, row)
+      refresh()
+    },
+    onClickOccupiedDot(connectionId) {
+      if (confirm('Remove this connection?')) {
+        removeConnection(connectionId)
+        refresh()
+      }
+    },
+    onReconnect(connectionId, fromNodeId, fromDotIndex, toNodeId, toDotIndex) {
+      reconnectConnection(connectionId, fromNodeId, fromDotIndex, toNodeId, toDotIndex)
       refresh()
     },
   })

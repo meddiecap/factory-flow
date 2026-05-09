@@ -94,10 +94,47 @@ export interface CanvasInteractionCallbacks {
     onDropNode: (type: string, col: number, row: number) => void
     /** Called when the user finishes dragging a node to a new grid position. */
     onMoveNode: (nodeId: string, col: number, row: number) => void
+    /**
+     * Called when the user clicks (no drag) on an occupied dot.
+     * The controller should prompt the user to confirm removal.
+     */
+    onClickOccupiedDot: (connectionId: string) => void
+    /**
+     * Called when the user finishes a reconnect drag on a valid new dot.
+     * The controller should call reconnectConnection with these args.
+     */
+    onReconnect: (
+        connectionId: string,
+        fromNodeId: string,
+        fromDotIndex: number,
+        toNodeId: string,
+        toDotIndex: number,
+    ) => void
 }
 
-/** Minimum pixel movement before a node body mousedown is treated as a drag. */
+/** Minimum pixel movement before a dot drag is treated as a drag vs a click. */
+const DOT_DRAG_THRESHOLD = 4
+
+/** Minimum pixel movement before a node body drag is treated as a move vs a click. */
 const NODE_DRAG_THRESHOLD = 4
+
+/** Additional state kept while reconnecting an existing connection by dragging. */
+interface ReconnectState {
+    /** Id of the connection being re-routed. */
+    connectionId: string
+    /** The original endpoints, used to restore on cancel. */
+    originalFromNodeId: string
+    originalFromDotIndex: number
+    originalToNodeId: string
+    originalToDotIndex: number
+    /** Which side the user grabbed (determines which end is being moved). */
+    grabbedSide: "output" | "input"
+    /** Pixel start position, for threshold detection. */
+    startX: number
+    startY: number
+    /** Whether the drag threshold has been exceeded. */
+    active: boolean
+}
 
 /** State tracked while the user is dragging a node body. */
 interface NodeDragState {
@@ -129,8 +166,11 @@ export class CanvasInteraction {
     private dragLine: Konva.Line | null = null
     private dragStart: DotRef | null = null
     private nodeDrag: NodeDragState | null = null
+    private reconnectDrag: ReconnectState | null = null
     private callbacks: CanvasInteractionCallbacks
     private containerEl: HTMLElement
+    /** Snapshot of the game state connections, updated on every rebuildDotHits call. */
+    private _state: GameState | null = null
 
     /**
      * Sets up all pointer event listeners on the stage and its HTML container.
@@ -163,6 +203,7 @@ export class CanvasInteraction {
      * @param state - Current game state (used to enumerate all dots).
      */
     rebuildDotHits(state: GameState): void {
+        this._state = state
         // Remove old hit shapes from the drag layer (not the node layer)
         const existing = this.dragLayer.find(".dot-hit")
         existing.forEach((s) => s.destroy())
@@ -183,7 +224,7 @@ export class CanvasInteraction {
                 fill: "transparent",
             })
             hitRect.setAttr("selectNodeId", node.id)
-            hitRect.on("mousedown touchstart", (e) => {
+            hitRect.on("mousedown touchstart", (_e) => {
                 // Don't initiate a node drag when a dot drag is already started.
                 if (this.dragStart !== null) return
                 const pos = this.stage.getPointerPosition()
@@ -241,12 +282,12 @@ export class CanvasInteraction {
                 circle.setAttr("dotIndex", i)
                 circle.setAttr("dotSide", "output")
                 circle.on("mousedown touchstart", () =>
-                    this._startDrag(node.id, i, x, y),
+                    this._startDotInteraction(node.id, i, "output", x, y),
                 )
                 this.dragLayer.add(circle)
             }
 
-            // Input dots — only hit-testable as drop targets during drag
+            // Input dots — also interactive for reconnect/remove
             for (let i = 0; i < def.inputs.length; i++) {
                 const [x, y] = inputDotPos(node, i)
                 const circle = new Konva.Circle({
@@ -259,6 +300,9 @@ export class CanvasInteraction {
                 circle.setAttr("dotNodeId", node.id)
                 circle.setAttr("dotIndex", i)
                 circle.setAttr("dotSide", "input")
+                circle.on("mousedown touchstart", () =>
+                    this._startDotInteraction(node.id, i, "input", x, y),
+                )
                 this.dragLayer.add(circle)
             }
         }
@@ -300,21 +344,115 @@ export class CanvasInteraction {
         this.dragLayer.batchDraw()
     }
 
+    /**
+     * Decides whether a dot mousedown starts a new connection drag, a reconnect drag,
+     * or is a potential click-to-delete on an occupied dot.
+     * Output dots initiate connection drag from their end.
+     * Occupied input or output dots initiate reconnect drag.
+     */
+    private _startDotInteraction(
+        nodeId: string,
+        dotIndex: number,
+        side: "output" | "input",
+        x: number,
+        y: number,
+    ): void {
+        const state = this._state
+        if (state === null) return
+
+        // Check if this dot already has a connection.
+        const existingConn = state.connections.find((c) =>
+            side === "output"
+                ? c.fromNodeId === nodeId && c.fromDotIndex === dotIndex
+                : c.toNodeId === nodeId && c.toDotIndex === dotIndex,
+        )
+
+        if (existingConn !== undefined) {
+            // Occupied dot: begin a potential reconnect drag.
+            const pos = this.stage.getPointerPosition()
+            if (pos === null) return
+            this.reconnectDrag = {
+                connectionId: existingConn.id,
+                originalFromNodeId: existingConn.fromNodeId,
+                originalFromDotIndex: existingConn.fromDotIndex,
+                originalToNodeId: existingConn.toNodeId,
+                originalToDotIndex: existingConn.toDotIndex,
+                grabbedSide: side,
+                startX: pos.x,
+                startY: pos.y,
+                active: false,
+            }
+            // Reuse dragLine for the in-progress reconnect line.
+            this.dragLine = new Konva.Line({
+                points: [x, y, x, y],
+                stroke: "#fb923c",
+                strokeWidth: 2,
+                dash: [6, 4],
+            })
+            this.dragLayer.add(this.dragLine)
+            this.dragLayer.batchDraw()
+        } else if (side === "output") {
+            // Free output dot: start a new connection drag.
+            this._startDrag(nodeId, dotIndex, x, y)
+        }
+        // Free input dot without an existing connection → no action on mousedown;
+        // it acts only as a drop target.
+    }
+
     private _onDragMove(
-        e: Konva.KonvaEventObject<MouseEvent | TouchEvent>,
+        _e: Konva.KonvaEventObject<MouseEvent | TouchEvent>,
     ): void {
         const pos = this.stage.getPointerPosition()
         if (pos === null) return
 
-        // --- Connection drag ---
-        if (this.dragLine !== null && this.dragStart !== null) {
-            this.dragLine.points([
-                this.dragStart.x,
-                this.dragStart.y,
-                pos.x,
-                pos.y,
-            ])
-            this.dragLayer.batchDraw()
+        // --- Connection / reconnect drag line ---
+        if (this.dragLine !== null) {
+            if (this.reconnectDrag !== null) {
+                const rd = this.reconnectDrag
+                const dx = pos.x - rd.startX
+                const dy = pos.y - rd.startY
+                if (
+                    !rd.active &&
+                    Math.sqrt(dx * dx + dy * dy) >= DOT_DRAG_THRESHOLD
+                ) {
+                    rd.active = true
+                }
+                if (rd.active && this._state !== null) {
+                    // Determine the fixed anchor: the end that was NOT grabbed.
+                    let ax = pos.x
+                    let ay = pos.y
+                    if (rd.grabbedSide === "output") {
+                        // Grabbed the output end; fixed end is the input.
+                        const toNode = this._state.nodes.find(
+                            (n) => n.id === rd.originalToNodeId,
+                        )
+                        if (toNode !== undefined) {
+                            ;[ax, ay] = inputDotPos(toNode, rd.originalToDotIndex)
+                        }
+                    } else {
+                        // Grabbed the input end; fixed end is the output.
+                        const fromNode = this._state.nodes.find(
+                            (n) => n.id === rd.originalFromNodeId,
+                        )
+                        if (fromNode !== undefined) {
+                            ;[ax, ay] = outputDotPos(
+                                fromNode,
+                                rd.originalFromDotIndex,
+                            )
+                        }
+                    }
+                    this.dragLine.points([ax, ay, pos.x, pos.y])
+                    this.dragLayer.batchDraw()
+                }
+            } else if (this.dragStart !== null) {
+                this.dragLine.points([
+                    this.dragStart.x,
+                    this.dragStart.y,
+                    pos.x,
+                    pos.y,
+                ])
+                this.dragLayer.batchDraw()
+            }
             return
         }
 
@@ -339,40 +477,95 @@ export class CanvasInteraction {
         }
     }
 
+    /** Finds the nearest dot hit shape within radius at `pos`, filtered by side. */
+    private _findNearestDot(
+        pos: { x: number; y: number },
+        side: "input" | "output",
+    ): { nodeId: string; dotIndex: number } | null {
+        const hits = this.dragLayer.find(".dot-hit")
+        for (const shape of hits) {
+            if (shape.getAttr("dotSide") !== side) continue
+            const sx =
+                (shape.getAttr("x") as number | undefined) ??
+                (shape as Konva.Circle).x()
+            const sy =
+                (shape.getAttr("y") as number | undefined) ??
+                (shape as Konva.Circle).y()
+            const dx = pos.x - sx
+            const dy = pos.y - sy
+            if (Math.sqrt(dx * dx + dy * dy) <= DOT_HIT_RADIUS * 1.5) {
+                return {
+                    nodeId: shape.getAttr("dotNodeId") as string,
+                    dotIndex: shape.getAttr("dotIndex") as number,
+                }
+            }
+        }
+        return null
+    }
+
     private _onDragEnd(
-        e: Konva.KonvaEventObject<MouseEvent | TouchEvent>,
+        _e: Konva.KonvaEventObject<MouseEvent | TouchEvent>,
     ): void {
         const pos = this.stage.getPointerPosition()
 
-        // --- Connection drag end ---
+        // --- Reconnect drag end ---
+        if (this.reconnectDrag !== null) {
+            const rd = this.reconnectDrag
+            if (!rd.active) {
+                // No movement → treat as click → prompt delete.
+                this.callbacks.onClickOccupiedDot(rd.connectionId)
+            } else if (pos !== null) {
+                // Determine which side is the free "moving" end and which is fixed.
+                // The grabbed side is being moved; the opposite side stays.
+                const targetSide: "input" | "output" =
+                    rd.grabbedSide === "output" ? "input" : "output"
+                const hit = this._findNearestDot(pos, targetSide)
+                if (hit !== null) {
+                    const fromNodeId =
+                        rd.grabbedSide === "output"
+                            ? hit.nodeId // moving the output end → new from
+                            : rd.originalFromNodeId
+                    const fromDotIndex =
+                        rd.grabbedSide === "output"
+                            ? hit.dotIndex
+                            : rd.originalFromDotIndex
+                    const toNodeId =
+                        rd.grabbedSide === "input"
+                            ? hit.nodeId // moving the input end → new to
+                            : rd.originalToNodeId
+                    const toDotIndex =
+                        rd.grabbedSide === "input"
+                            ? hit.dotIndex
+                            : rd.originalToDotIndex
+                    this.callbacks.onReconnect(
+                        rd.connectionId,
+                        fromNodeId,
+                        fromDotIndex,
+                        toNodeId,
+                        toDotIndex,
+                    )
+                    // If validation fails in the controller, the connection is unchanged.
+                }
+                // Dropping on nothing → no change (original connection stays).
+            }
+            this.dragLine?.destroy()
+            this.dragLine = null
+            this.reconnectDrag = null
+            this.dragLayer.batchDraw()
+            return
+        }
+
+        // --- New connection drag end ---
         if (this.dragLine !== null && this.dragStart !== null) {
             if (pos !== null) {
-                const hits = this.dragLayer.find(".dot-hit")
-                for (const shape of hits) {
-                    if (shape.getAttr("dotSide") !== "input") continue
-                    const sx =
-                        (shape.getAttr("x") as number | undefined) ??
-                        (shape as Konva.Circle).x()
-                    const sy =
-                        (shape.getAttr("y") as number | undefined) ??
-                        (shape as Konva.Circle).y()
-                    const dx = pos.x - sx
-                    const dy = pos.y - sy
-                    if (Math.sqrt(dx * dx + dy * dy) <= DOT_HIT_RADIUS * 1.5) {
-                        const targetNodeId = shape.getAttr(
-                            "dotNodeId",
-                        ) as string
-                        const targetDotIndex = shape.getAttr(
-                            "dotIndex",
-                        ) as number
-                        this.callbacks.onConnect(
-                            this.dragStart.nodeId,
-                            this.dragStart.dotIndex,
-                            targetNodeId,
-                            targetDotIndex,
-                        )
-                        break
-                    }
+                const hit = this._findNearestDot(pos, "input")
+                if (hit !== null) {
+                    this.callbacks.onConnect(
+                        this.dragStart.nodeId,
+                        this.dragStart.dotIndex,
+                        hit.nodeId,
+                        hit.dotIndex,
+                    )
                 }
             }
             this.dragLine.destroy()
