@@ -53,15 +53,28 @@ Op de Energy Supply-node is direct zichtbaar hoeveel energie er per tick wordt g
 
 Energie loopt via expliciete gele verbindingen (zie punt 3). De Energy Supply toont op de node:
 
-- **Totale output per tick**: de energie die deze node per tick genereert, bijv. `⚡ 0.05 /tick`
-- **Verdeling**: als er N fabrieken zijn aangesloten, ontvangt elke fabriek `0.05 / N /tick`; dit is impliciet zichtbaar via de gele verbindingslijnen
+- **Totale output per tick**: de energie die deze node per tick genereert, bijv. `⚡ 1.0 /tick`
+- **Verdeling**: als er N fabrieken zijn aangesloten, ontvangt elke fabriek `1.0 / N /tick`; dit is impliciet zichtbaar via de gele verbindingslijnen
 - **Bufferinhoud**: de huidige hoeveelheid energie in de uitvoerbuffer, bijv. `Buffer: 12 / 20`
 
 De speler ziet zo in één oogopslag of de Energy Supply voldoende levert voor de aangesloten fabrieken.
 
-### Opmerking over balanswaarden
+### Balanswaarden
 
-De huidige productiewaarde van de Energy Supply (2 eenheden per 40 ticks = 0.05/tick) was ontworpen voor de globale pool, waarbij meerdere Energy Supplies optelden. In het nieuwe verbindingsmodel kan één Energy Supply slechts een fractie leveren van wat een gemiddelde fabriek nodig heeft (bijv. 0.5/tick voor een IJzermijn). **De productiewaarden van de Energy Supply zullen moeten worden aangepast** om het directe verbindingsmodel speelbaar te maken — dit is een balancevraagstuk voor implementatie, niet een ontwerpdiscussie.
+De oude productiewaarde (2 eenheden / 40 ticks = 0.05/tick) was ontworpen voor de globale pool en is onbruikbaar voor het directe verbindingsmodel. Nieuwe startwaarden:
+
+- **Energieproductie**: 1.0 energie/tick (continu; geen cyclus)
+- **Uitvoerbuffer**: 40 eenheden (standaard)
+
+Dit betekent dat één Energy Supply bij basissnelheid:
+
+- **2 mijnen** (0.5/tick elk) op volle snelheid kan voeden
+- **1 Smelterij of Kabelproductie** (1.0/tick) precies op volle snelheid kan voeden
+- **1 Gieterij** (1.5/tick) slechts op 67% snelheid kan voeden → 2e Energy Supply nodig
+
+De behoefte aan meerdere Energy Supplies schaalt daarmee mee met de complexiteit van de keten, wat de upgradedrempel en bouwkosten van de Energy Supply relevant houdt.
+
+Deze waarden zijn een startpunt voor playtesting; aanpassen is verwacht na de eerste speelsessie.
 
 ---
 
@@ -89,7 +102,7 @@ De speler wil:
 
 Energie loopt **uitsluitend via expliciete verbindingen**. De globale Brandstof-pool (sectie 5.3 en 13.2–13.3 van game-design.md) vervalt volledig. Elke fabriek moet expliciet worden aangesloten op een Energy Supply om te werken.
 
-Noot: "energie" in het nieuwe model is een **abstract power-concept** — het is niet hetzelfde als Brandstof als verkoopbaar product. Energie is niet te verkopen bij de Markt. De Energy Supply-node is voortaan een stroomgenerator, niet een Brandstoffabriek.
+**Hoe de Energy Supply energie produceert:** de Energy Supply is een **autonome bron** — net als een mijn produceert hij zonder invoer-verbindingen. Hij heeft **geen input-dots** aan de linkerzijde. De node genereert continu 1.0 energie/tick, onafhankelijk van andere nodes of verbindingen. Energie is een **abstract power-concept**: het is geen verkoopbaar product, verschijnt niet in de Markt, en is niet overdraagbaar als resource in productieketens. De Energy Supply is voortaan een stroomgenerator, niet een Brandstoffabriek.
 
 #### Beslissing 2 – Energy Supply heeft meerdere output-dots; gelijkmatige verdeling
 
