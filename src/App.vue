@@ -65,8 +65,21 @@ onUnmounted(() => {
   renderer?.destroy()
 })
 
-// Re-render whenever reactive state changes programmatically (e.g. future tick loop).
-watch(() => gameState.tick, refresh)
+// Re-render canvas visuals every tick (buffers, progress bars change).
+watch(() => gameState.tick, () => {
+  renderer?.render(gameState)
+})
+
+// Rebuild hit areas only when nodes or connections are added/removed.
+// This prevents click events being dropped because hit shapes were destroyed mid-click.
+watch(
+  () => gameState.nodes.length + gameState.connections.length,
+  () => {
+    if (renderer === null || interaction === null) return
+    renderer.render(gameState)
+    interaction.rebuildDotHits(gameState)
+  },
+)
 </script>
 
 <template>
