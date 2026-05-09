@@ -142,28 +142,76 @@ function fillPct(amount: number, capacity: number): string {
 }
 
 /**
+ * Recursively traces back through pass-through nodes (Splitter, Warehouse) to
+ * find the steady-state throughput in units/tick reaching a given output dot.
+ * Returns null when no producing node is reachable or the chain is disconnected.
+ */
+function traceUnitsPerTick(
+    nodeId: string,
+    dotIndex: number,
+    nodes: typeof gameState.nodes,
+    connections: typeof gameState.connections,
+    speedFactors: Map<string, number>,
+    depth = 0,
+): number | null {
+    if (depth > 20) return null // guard against cycles
+    const srcNode = nodes.find((n) => n.id === nodeId)
+    if (!srcNode) return null
+    const srcDef = NODE_DEFS[srcNode.type]
+
+    if (srcDef.cycleDuration > 0) {
+        // Real producing node — calculate output rate from recipe.
+        const output = srcDef.outputs[dotIndex]
+        if (!output) return null
+        const speedFactor = speedFactors.get(srcNode.id) ?? 1
+        const speedMultiplier = 1.5 ** srcNode.speedUpgradeLevel
+        return (output.amount / srcDef.cycleDuration) * speedFactor * speedMultiplier
+    }
+
+    if (srcNode.type === NodeType.Splitter) {
+        // Trace back through the splitter's single input connection.
+        const inConn = connections.find(
+            (c) => !c.isEnergy && c.toNodeId === srcNode.id && c.toDotIndex === 0,
+        )
+        if (!inConn) return null
+        const upstreamRate = traceUnitsPerTick(inConn.fromNodeId, inConn.fromDotIndex, nodes, connections, speedFactors, depth + 1)
+        if (upstreamRate === null) return null
+        const ratio = dotIndex === 0 ? (srcNode.splitterRatioA ?? 0.5) : 1 - (srcNode.splitterRatioA ?? 0.5)
+        return upstreamRate * ratio
+    }
+
+    if (srcNode.type === NodeType.Warehouse) {
+        // Warehouse is a straight passthrough — trace back its input.
+        const inConn = connections.find(
+            (c) => !c.isEnergy && c.toNodeId === srcNode.id && c.toDotIndex === 0,
+        )
+        if (!inConn) return null
+        return traceUnitsPerTick(inConn.fromNodeId, inConn.fromDotIndex, nodes, connections, speedFactors, depth + 1)
+    }
+
+    return null
+}
+
+/**
  * For each Market input slot, returns the steady-state €/s based on what the
- * connected factory structurally produces: outputAmount / cycleDuration * speedFactor
- * * speedMultiplier * 20 ticks/s * price. Returns null for unconnected slots.
+ * connected factory structurally produces, tracing back through Splitters and
+ * Warehouses to the original producer. Returns null for unconnected slots.
  */
 const marketSlotRevenues = computed<Array<number | null>>(() => {
     if (!node.value || node.value.type !== NodeType.Market) return []
     const speedFactors = calcNodeSpeedFactors(gameState.nodes, gameState.connections, NODE_DEFS)
-    return node.value.inputBuffers.map((buf, i) => {
+    return node.value.inputBuffers.map((_buf, i) => {
         const conn = gameState.connections.find(
             (c) => !c.isEnergy && c.toNodeId === node.value!.id && c.toDotIndex === i,
         )
         if (!conn) return null
         const srcNode = gameState.nodes.find((n) => n.id === conn.fromNodeId)
         if (!srcNode) return null
-        const srcDef = NODE_DEFS[srcNode.type]
-        if (!srcDef || srcDef.cycleDuration === 0) return null
-        const output = srcDef.outputs[conn.fromDotIndex]
-        if (!output) return null
-        const speedFactor = speedFactors.get(srcNode.id) ?? 1
-        const speedMultiplier = 1.5 ** srcNode.speedUpgradeLevel
-        const unitsPerTick = (output.amount / srcDef.cycleDuration) * speedFactor * speedMultiplier
-        const price = MARKET_PRICES[output.resource] ?? 0
+        const unitsPerTick = traceUnitsPerTick(conn.fromNodeId, conn.fromDotIndex, gameState.nodes, gameState.connections, speedFactors)
+        if (unitsPerTick === null) return null
+        const resource = srcNode.outputBuffers[conn.fromDotIndex]?.resource
+        if (resource === undefined) return null
+        const price = MARKET_PRICES[resource] ?? 0
         return unitsPerTick * price * 20 // × 20 ticks/s → €/s
     })
 })
