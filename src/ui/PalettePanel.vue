@@ -25,7 +25,7 @@ const PALETTE_GROUPS: { label: string; types: NodeType[] }[] = [
 function entryFor(type: NodeType) {
     const def = NODE_DEFS[type]
     const existing = countNodes(type)
-    const cost = buildCost(def.buildCost, existing)
+    const cost = buildCost(type, existing)
     const unlocked = canUnlock(type, gameState)
     const affordable = gameState.money >= cost
     return { def, cost, unlocked, affordable }
