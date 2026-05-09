@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, watch, ref } from 'vue'
-import { CanvasRenderer, GRID_COLS, GRID_ROWS, CELL_SIZE } from './canvas/CanvasRenderer'
-import { CanvasInteraction } from './canvas/CanvasInteraction'
+import { CanvasRenderer, GRID_COLS, GRID_ROWS, CELL_SIZE } from './canvas/renderer'
+import { CanvasInteraction } from './canvas/interaction'
 import { NodeType } from './simulation/types'
 import { gameState, placeNode, addConnection, moveNode, removeConnection, reconnectConnection } from './simulation/useGameState'
 import { tick, checkWin } from './simulation/simulator'
