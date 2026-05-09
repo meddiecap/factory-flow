@@ -7,6 +7,7 @@ import { upgradeCost } from '../simulation/economy'
 import { applyUpgrade } from '../simulation/upgrades'
 import type { UpgradeType } from '../simulation/upgrades'
 import { gameState } from '../simulation/useGameState'
+import { calcNodeSpeedFactors } from '../simulation/energy'
 
 /** Props: pass the id of the currently selected node, or null to hide the panel. */
 const props = defineProps<{ nodeId: string | null }>()
@@ -139,24 +140,29 @@ function fillPct(amount: number, capacity: number): string {
 }
 
 /**
- * For each Market input slot, returns the actual €/s earned based on the
- * units transferred into this slot in the last simulation tick.
- * Returns null for unconnected slots.
+ * For each Market input slot, returns the steady-state €/s based on what the
+ * connected factory structurally produces: outputAmount / cycleDuration * speedFactor
+ * * speedMultiplier * 20 ticks/s * price. Returns null for unconnected slots.
  */
 const marketSlotRevenues = computed<Array<number | null>>(() => {
     if (!node.value || node.value.type !== NodeType.Market) return []
+    const speedFactors = calcNodeSpeedFactors(gameState.nodes, gameState.connections, NODE_DEFS)
     return node.value.inputBuffers.map((buf, i) => {
         const conn = gameState.connections.find(
             (c) => !c.isEnergy && c.toNodeId === node.value!.id && c.toDotIndex === i,
         )
         if (!conn) return null
-        // Use the actual units transferred last tick for a realistic rate.
-        const lastTransfer = gameState.lastTransfers?.find(
-            (t) => t.connectionId === conn.id,
-        )
-        const unitsPerTick = lastTransfer?.amount ?? 0
-        const price = MARKET_PRICES[buf.resource] ?? (MARKET_PRICES[lastTransfer?.resource ?? buf.resource] ?? 0)
-        return unitsPerTick * price * 20 // × 20 ticks/s
+        const srcNode = gameState.nodes.find((n) => n.id === conn.fromNodeId)
+        if (!srcNode) return null
+        const srcDef = NODE_DEFS[srcNode.type]
+        if (!srcDef || srcDef.cycleDuration === 0) return null
+        const output = srcDef.outputs[conn.fromDotIndex]
+        if (!output) return null
+        const speedFactor = speedFactors.get(srcNode.id) ?? 1
+        const speedMultiplier = 1.5 ** srcNode.speedUpgradeLevel
+        const unitsPerTick = (output.amount / srcDef.cycleDuration) * speedFactor * speedMultiplier
+        const price = MARKET_PRICES[output.resource] ?? 0
+        return unitsPerTick * price * 20 // × 20 ticks/s → €/s
     })
 })
 
@@ -214,7 +220,8 @@ function bufferColour(amount: number, capacity: number): string {
                 <!-- Market: show actual revenue per second for this slot -->
                 <div v-if="isMarket" class="mt-0.5 flex justify-between text-[10px]">
                     <span class="text-gray-500">Revenue</span>
-                    <span v-if="marketSlotRevenues[i] !== null && marketSlotRevenues[i]! > 0" class="text-yellow-400 tabular-nums">
+                    <span v-if="marketSlotRevenues[i] !== null && marketSlotRevenues[i]! > 0"
+                        class="text-yellow-400 tabular-nums">
                         €{{ marketSlotRevenues[i]?.toLocaleString() }} /s
                     </span>
                     <span v-else-if="marketSlotRevenues[i] !== null" class="text-gray-600">€0 /s</span>
