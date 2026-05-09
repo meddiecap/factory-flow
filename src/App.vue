@@ -6,6 +6,7 @@ import { NodeType } from './simulation/types'
 import { gameState, placeNode, addConnection } from './simulation/useGameState'
 import { tick, checkWin } from './simulation/simulator'
 import { tickMarket } from './simulation/economy'
+import { saveState, loadState, clearState } from './simulation/persistence'
 import PalettePanel from './ui/PalettePanel.vue'
 import HudBar from './ui/HudBar.vue'
 import DetailPanel from './ui/DetailPanel.vue'
@@ -23,6 +24,7 @@ const won = ref(false)
 let renderer: CanvasRenderer | null = null
 let interaction: CanvasInteraction | null = null
 let simulationInterval: ReturnType<typeof setInterval> | null = null
+let saveInterval: ReturnType<typeof setInterval> | null = null
 
 /** Advances the simulation by one tick and runs market selling. Called 20×/sec. */
 function simulationStep(): void {
@@ -47,6 +49,12 @@ function refresh(): void {
 }
 
 onMounted(() => {
+  // Restore a previously saved run, if one exists.
+  const saved = loadState()
+  if (saved !== null) {
+    Object.assign(gameState, saved)
+  }
+
   renderer = new CanvasRenderer('game-canvas')
   renderer.render(gameState)
 
@@ -71,10 +79,14 @@ onMounted(() => {
 
   // Start the simulation loop at 20 ticks/second (section 8).
   simulationInterval = setInterval(simulationStep, 50)
+
+  // Auto-save every 5 seconds (section 9).
+  saveInterval = setInterval(() => saveState(gameState), 5000)
 })
 
 onUnmounted(() => {
   if (simulationInterval !== null) clearInterval(simulationInterval)
+  if (saveInterval !== null) clearInterval(saveInterval)
   renderer?.destroy()
 })
 
@@ -95,10 +107,10 @@ watch(
 )
 
 /**
- * Reloads the page to start a fresh run.
- * The next phase (9) will clear localStorage here instead.
+ * Clears the saved state and reloads the page to start a fresh run.
  */
 function restart(): void {
+  clearState()
   window.location.reload()
 }
 </script>
