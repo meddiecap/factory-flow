@@ -8,6 +8,7 @@ import { applyUpgrade } from '../simulation/upgrades'
 import type { UpgradeType } from '../simulation/upgrades'
 import { gameState } from '../simulation/useGameState'
 import { calcNodeSpeedFactors } from '../simulation/energy'
+import { traceUnitsPerTick } from '../simulation/throughput'
 
 /** Props: pass the id of the currently selected node, or null to hide the panel. */
 const props = defineProps<{ nodeId: string | null }>()
@@ -139,57 +140,6 @@ function buySalesPoint(): void {
 function fillPct(amount: number, capacity: number): string {
     if (capacity === 0) return '0%'
     return Math.round((amount / capacity) * 100) + '%'
-}
-
-/**
- * Recursively traces back through pass-through nodes (Splitter, Warehouse) to
- * find the steady-state throughput in units/tick reaching a given output dot.
- * Returns null when no producing node is reachable or the chain is disconnected.
- */
-function traceUnitsPerTick(
-    nodeId: string,
-    dotIndex: number,
-    nodes: typeof gameState.nodes,
-    connections: typeof gameState.connections,
-    speedFactors: Map<string, number>,
-    depth = 0,
-): number | null {
-    if (depth > 20) return null // guard against cycles
-    const srcNode = nodes.find((n) => n.id === nodeId)
-    if (!srcNode) return null
-    const srcDef = NODE_DEFS[srcNode.type]
-
-    if (srcDef.cycleDuration > 0) {
-        // Real producing node — calculate output rate from recipe.
-        const output = srcDef.outputs[dotIndex]
-        if (!output) return null
-        const speedFactor = speedFactors.get(srcNode.id) ?? 1
-        const speedMultiplier = 1.5 ** srcNode.speedUpgradeLevel
-        return (output.amount / srcDef.cycleDuration) * speedFactor * speedMultiplier
-    }
-
-    if (srcNode.type === NodeType.Splitter) {
-        // Trace back through the splitter's single input connection.
-        const inConn = connections.find(
-            (c) => !c.isEnergy && c.toNodeId === srcNode.id && c.toDotIndex === 0,
-        )
-        if (!inConn) return null
-        const upstreamRate = traceUnitsPerTick(inConn.fromNodeId, inConn.fromDotIndex, nodes, connections, speedFactors, depth + 1)
-        if (upstreamRate === null) return null
-        const ratio = dotIndex === 0 ? (srcNode.splitterRatioA ?? 0.5) : 1 - (srcNode.splitterRatioA ?? 0.5)
-        return upstreamRate * ratio
-    }
-
-    if (srcNode.type === NodeType.Warehouse) {
-        // Warehouse is a straight passthrough — trace back its input.
-        const inConn = connections.find(
-            (c) => !c.isEnergy && c.toNodeId === srcNode.id && c.toDotIndex === 0,
-        )
-        if (!inConn) return null
-        return traceUnitsPerTick(inConn.fromNodeId, inConn.fromDotIndex, nodes, connections, speedFactors, depth + 1)
-    }
-
-    return null
 }
 
 /**
