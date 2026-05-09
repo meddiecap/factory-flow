@@ -83,7 +83,7 @@ Productie verloopt in lagen van toenemende complexiteit:
 
 Fabrieken verbruiken inputs in **vaste ratio's**:
 
-> Smelterij: 3× IJzererts + 1× Kolen → 1× Staal per 2 ticks (= 10 Staal/sec bij basissnelheid)
+> Smelterij: 3× IJzererts + 1× Kolen → 1× Staal per 80 ticks (= 0,25 Staal/sec bij basissnelheid)
 
 Als de aanvoer te langzaam is, produceert de fabriek trager. Dit is de **tactische kern** van het spel: ratio's in balans brengen door meerdere aanvoerfabrieken te plaatsen of de snelheid te upgraden.
 
@@ -106,14 +106,14 @@ Als de aanvoer te langzaam is, produceert de fabriek trager. Dit is de **tactisc
 
 ### 4.4 Bijzondere Nodes
 
-| Node                   | Functie                                                                                                                                                                                                                                                                        |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Bron**               | Produceert grondstoffen (laag 0), upgradebaar in snelheid                                                                                                                                                                                                                      |
-| **Energy Supply**      | Produceert Brandstof zonder grondstofkosten; upgradebaar in productie                                                                                                                                                                                                          |
-| **Splitter/Allocator** | Verdeelt 1 input over 2 outputs met instelbare ratio via fractionele accumulatie (zie hieronder)                                                                                                                                                                               |
-| **Opslagpakhuis**      | Grote buffer als tussenstation. Verbind de **uitvoer-dot van een productienode** met de **invoer-dot links** van het pakhuis. Verbind de **uitvoer-dot rechts** van het pakhuis met de invoer-dot van de volgende schakel. Accepteert elk resourcetype; 200 eenheden per kant. |
-| **Markt/Verkooppunt**  | Pure sink; geen uitvoer-dot. Verbind de **uitvoer-dot van een productienode** met de **invoer-dot links** van de Markt. De Markt verkoopt automatisch alles wat binnenkomt; max 20 eenheden/tick per tick.                                                                     |
-| **Node Group**         | Meerdere nodes bundelen tot één container                                                                                                                                                                                                                                      |
+| Node                   | Functie                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Bron**               | Produceert grondstoffen (laag 0), upgradebaar in snelheid                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| **Energy Supply**      | Produceert Brandstof zonder grondstofkosten; upgradebaar in productie                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| **Splitter/Allocator** | Verdeelt 1 input over 2 outputs met instelbare ratio via fractionele accumulatie (zie hieronder)                                                                                                                                                                                                                                                                                                                                                                                              |
+| **Opslagpakhuis**      | Grote buffer als tussenstation. Verbind de **uitvoer-dot van een productienode** met de **invoer-dot links** van het pakhuis. Verbind de **uitvoer-dot rechts** van het pakhuis met de invoer-dot van de volgende schakel. Accepteert elk resourcetype; 200 eenheden per kant.                                                                                                                                                                                                                |
+| **Markt/Verkooppunt**  | Pure sink; geen uitvoer-dot. Verbind de **uitvoer-dot van een productienode** met de **invoer-dot links** van de Markt. De Markt verkoopt automatisch alles wat binnenkomt; max 20 eenheden/tick per aansluitpunt. De Markt start met **1 verkooppunt** (= 1 invoer-dot). Extra aansluitpunten worden gekocht via de **Verkooppunten-upgrade** (zie sectie 6). Per verkooppunt is in de NodeDetail-panel zichtbaar welke resource er doorheen loopt en hoeveel geld die per seconde oplevert. |
+| **Node Group**         | Meerdere nodes bundelen tot één container                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 
 **Splitter — fractionele accumulatie**: elke tick wordt de ratio opgeteld bij twee interne accumulatoren. Zodra een accumulator ≥ 1 bereikt, stuurt hij 1 eenheid door en trekt hij 1 af. Voorbeeld bij 70/30: accumulator A krijgt +0.7/tick, B +0.3/tick. Tick 1: A=0.7, B=0.3. Tick 2: A=1.4 → stuurt 1 door, A=0.4; B=0.6. Tick 3: A=1.1 → stuurt 1 door, A=0.1; B=0.9. Tick 4: A=0.8; B=1.2 → stuurt 1 door, B=0.2. Over 10 ticks: 7 naar A, 3 naar B.
 
@@ -125,20 +125,22 @@ Alle fabrieken met hun productierecept, cyclusduur, bouwkosten en brandstofverbr
 Formule: `kosten_n = basiskosten × 1.5^(n−1)` waarbij n het aantal al gebouwde fabrieken van dat type is.
 Voorbeeld: 3e IJzermijn = €50 × 1.5² = €113.
 
-| Fabriek        | Input per cyclus                                                          | Output per cyclus                | Ticks | Bouwkost (1e) | Brandstof/tick |
-| -------------- | ------------------------------------------------------------------------- | -------------------------------- | ----- | ------------- | -------------- |
-| IJzermijn      | —                                                                         | 1× IJzererts                     | 1     | €50           | 0.5            |
-| Kolenmijn      | —                                                                         | 1× Kolen                         | 1     | €60           | 0.5            |
-| Kopermijn      | —                                                                         | 1× Koper                         | 1     | €80           | 0.5            |
-| Siliciummijn   | —                                                                         | 1× Silicium                      | 1     | €80           | 0.5            |
-| Energy Supply  | —                                                                         | 2× Brandstof                     | 1     | €150          | —              |
-| Smelterij      | 3× IJzererts + 1× Kolen                                                   | 1× Staal                         | 2     | €500          | 1              |
-| Kabelproductie | 2× Koper                                                                  | 1× Kabels                        | 2     | €400          | 1              |
-| Gieterij       | 4× Staal                                                                  | 1× Rompdelen + 1× Brandstoftanks | 4     | €1.000        | 1.5            |
-| Chipfabriek    | 2× Silicium + 3× Kabels                                                   | 1× Circuits                      | 4     | €3.000        | 2              |
-| Elektronica    | 2× Circuits                                                               | 1× Besturingssysteem             | 4     | €6.000        | 2              |
-| Motorenfabriek | 4× Staal + 2× Brandstof                                                   | 1× Stuwraketten                  | 4     | €15.000       | 2 \*           |
-| Assemblage     | 2× Rompdelen + 2× Brandstoftanks + 1× Besturingssysteem + 2× Stuwraketten | 1× Raket                         | 20    | €50.000       | 3              |
+De basisproductiesnelheid is bewust laag gehouden zodat het vroege spel uitdagend blijft. Alle cyclustijden gaan uit van 20 ticks/seconde; de kolom _Sec/cyclus_ toont de werkelijke duur bij basissnelheid (zonder energie-surplus).
+
+| Fabriek        | Input per cyclus                                                          | Output per cyclus                | Ticks | Sec/cyclus | Bouwkost (1e) | Brandstof/tick |
+| -------------- | ------------------------------------------------------------------------- | -------------------------------- | ----- | ---------- | ------------- | -------------- |
+| IJzermijn      | —                                                                         | 1× IJzererts                     | 40    | 2 sec      | €50           | 0.5            |
+| Kolenmijn      | —                                                                         | 1× Kolen                         | 40    | 2 sec      | €60           | 0.5            |
+| Kopermijn      | —                                                                         | 1× Koper                         | 40    | 2 sec      | €80           | 0.5            |
+| Siliciummijn   | —                                                                         | 1× Silicium                      | 40    | 2 sec      | €80           | 0.5            |
+| Energy Supply  | —                                                                         | 2× Brandstof                     | 40    | 2 sec      | €150          | —              |
+| Smelterij      | 3× IJzererts + 1× Kolen                                                   | 1× Staal                         | 80    | 4 sec      | €500          | 1              |
+| Kabelproductie | 2× Koper                                                                  | 1× Kabels                        | 80    | 4 sec      | €400          | 1              |
+| Gieterij       | 4× Staal                                                                  | 1× Rompdelen + 1× Brandstoftanks | 160   | 8 sec      | €1.000        | 1.5            |
+| Chipfabriek    | 2× Silicium + 3× Kabels                                                   | 1× Circuits                      | 160   | 8 sec      | €3.000        | 2              |
+| Elektronica    | 2× Circuits                                                               | 1× Besturingssysteem             | 160   | 8 sec      | €6.000        | 2              |
+| Motorenfabriek | 4× Staal + 2× Brandstof                                                   | 1× Stuwraketten                  | 160   | 8 sec      | €15.000       | 2 \*           |
+| Assemblage     | 2× Rompdelen + 2× Brandstoftanks + 1× Besturingssysteem + 2× Stuwraketten | 1× Raket                         | 800   | 40 sec     | €50.000       | 3              |
 
 > \* Motorenfabriek verbruikt naast 2 brandstof/tick als energiebron ook 2 brandstof per cyclus als recept-input (= 0.5/tick extra bij basissnelheid).
 > Assemblage is uniek; er wordt slechts één gebouwd.
@@ -213,45 +215,47 @@ Boven een bepaald surplusniveau loont het meer om een fabriek direct te upgraden
 
 Upgrades zijn per-node beschikbaar en kosten geld. Elke upgrade heeft **afnemend meerrendement**: hogere niveaus kosten exponentieel meer maar leveren steeds minder extra opbrengst op.
 
-| Upgrade             | Effect                                                                                                                            |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| Snelheid            | Multiplicatief: niveau n geeft ×1.5ⁿ boven basissnelheid (n=1: ×1.5; n=2: ×2.25; n=3: ×3.375); elke stap ×3 duurder; geen maximum |
-| Buffer              | +10 eenheden per niveau op zowel invoer- als uitvoerbuffer                                                                        |
-| Efficiëntie         | −10% inputverbruik per niveau (minimum 50% van basis); n=1: ×2.7 i.p.v. ×3 erts; n=5: ×1.5                                        |
-| Lijnkapaciteit      | +10 eenheden/tick per niveau boven de standaard van 10 (n=1: 20/tick; n=2: 30/tick)                                               |
-| Energie-efficiëntie | −10% Brandstof-verbruik per niveau van één specifieke fabriek (minimum 50% van basis)                                             |
+| Upgrade             | Van toepassing op         | Effect                                                                                                                                                                                                                                                   |
+| ------------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Snelheid            | Alle productienodes       | Multiplicatief: niveau n geeft ×1.5ⁿ boven basissnelheid (n=1: ×1.5; n=2: ×2.25; n=3: ×3.375); elke stap ×3 duurder; geen maximum                                                                                                                        |
+| Buffer              | Alle nodes met buffers    | +10 eenheden per niveau op zowel invoer- als uitvoerbuffer                                                                                                                                                                                               |
+| Efficiëntie         | Productienodes met invoer | −10% inputverbruik per niveau (minimum 50% van basis); n=1: ×2.7 i.p.v. ×3 erts; n=5: ×1.5                                                                                                                                                               |
+| Lijnkapaciteit      | Verbindingen (niet nodes) | +10 eenheden/tick per niveau boven de standaard van 10 (n=1: 20/tick; n=2: 30/tick)                                                                                                                                                                      |
+| Energie-efficiëntie | Productienodes            | −10% Brandstof-verbruik per niveau van één specifieke fabriek (minimum 50% van basis)                                                                                                                                                                    |
+| Verkooppunten       | Alleen Markt              | +1 invoer-dot per niveau; elk extra verkooppunt kost `€200 × 2^(niveau−1)` (niveau 1: €200, niveau 2: €400, niveau 3: €800, …). De Markt start met 1 gratis verkooppunt. Elk verkooppunt heeft zijn eigen aansluitlijn en verkoopt tot 20 eenheden/tick. |
 
 ### 6.1 Marginaal Rendement
 
 Het rendement van een upgrade wordt uitgedrukt als **terugverdientijd**: upgradekosten ÷ extra netto-opbrengst per seconde. Hoe korter, hoe aantrekkelijker.
 
-Gegevens bij basissnelheid (20 ticks/sec), zonder energie-surplus, fabriek volledig bevoorraad.
+Gegevens bij basissnelheid (20 ticks/sec en nieuwe cyclustijden uit sectie 4.5), zonder energie-surplus, fabriek volledig bevoorraad.
 Upgrade niveau 1 kost 2× bouwkosten; elk volgend niveau ×3 duurder.
 
-Netto-opbrengst/sec = verkoopprijs van de output min inputkosten van grond- en halfstoffen, per seconde.
+Netto-opbrengst/sec = (output/sec × verkoopprijs) − (input/sec × marktwaarde inputs).
 
-| Fabriek        | Netto inkomst/sec | Upgrade L1 kosten | Extra/sec (+50%) | Terugverdientijd |
-| -------------- | ----------------- | ----------------- | ---------------- | ---------------- |
-| IJzermijn      | €40               | €100              | +€20             | **5 sec**        |
-| Kolenmijn      | €60               | €120              | +€30             | **4 sec**        |
-| Kopermijn      | €80               | €160              | +€40             | **4 sec**        |
-| Smelterij      | €510              | €1.000            | +€255            | **3.9 sec**      |
-| Kabelproductie | €320              | €800              | +€160            | **5 sec**        |
-| Gieterij       | €1.050            | €2.000            | +€525            | **3.8 sec**      |
-| Chipfabriek    | €1.360            | €6.000            | +€680            | **8.8 sec**      |
-| Elektronica    | €4.000            | €12.000           | +€2.000          | **6 sec**        |
-| Motorenfabriek | €23.700           | €30.000           | +€11.850         | **2.5 sec**      |
+| Fabriek        | Productie | Netto inkomst/sec | Upgrade L1 kosten | Extra/sec (+50%) | Terugverdientijd |
+| -------------- | --------- | ----------------- | ----------------- | ---------------- | ---------------- |
+| IJzermijn      | 0,5/sec   | €1                | €100              | +€0,50           | **200 sec**      |
+| Kolenmijn      | 0,5/sec   | €1,50             | €120              | +€0,75           | **160 sec**      |
+| Kopermijn      | 0,5/sec   | €2                | €160              | +€1              | **160 sec**      |
+| Smelterij      | 0,25/sec  | €12,75            | €1.000            | +€6,38           | **157 sec**      |
+| Kabelproductie | 0,25/sec  | €8                | €800              | +€4              | **200 sec**      |
+| Gieterij       | 0,125/sec | €26,25            | €2.000            | +€13,13          | **152 sec**      |
+| Chipfabriek    | 0,125/sec | €34               | €6.000            | +€17             | **353 sec**      |
+| Elektronica    | 0,125/sec | €100              | €12.000           | +€50             | **240 sec**      |
+| Motorenfabriek | 0,125/sec | €592,50           | €30.000           | +€296,25         | **101 sec**      |
 
 > Terugverdientijd geldt alleen als de fabriek ononderbroken draait met voldoende input.
 > Chipfabriek scoort lager door hoge tussenliggende inputkosten; is echter verplicht voor de raket.
+> Motorenfabriek heeft korte terugverdientijd dankzij de hoge stuwrakettenprijs.
 
 **Schaling over meerdere niveaus** (terugverdientijd ×3 per niveau):
 
 | Upgrade niveau | IJzermijn | Smelterij | Motorenfabriek |
 | -------------- | --------- | --------- | -------------- |
-| Niveau 1       | 5 sec     | 3.9 sec   | 2.5 sec        |
-| Niveau 2       | 15 sec    | 11.7 sec  | 7.5 sec        |
-| Niveau 3       | 45 sec    | 35 sec    | 22.5 sec       |
+| Niveau 1       | 200 sec   | 157 sec   | 101 sec        |
+| Niveau 2       | 600 sec   | 471 sec   | 303 sec        |
+| Niveau 3       | 1.800 sec | 1.413 sec | 909 sec        |
 
 Zodra de terugverdientijd van de beste beschikbare upgrade hoger is dan een nog-niet-geüpgrade fabriek elders in de keten, is die andere upgrade aantrekkelijker. Als de Energy Supply een brandstoftekort veroorzaakt, verslechtert dat de netto-opbrengst van álle fabrieken — dat maakt het altijd de eerste prioriteit.
 
@@ -333,6 +337,7 @@ Een aparte uitdagingsmodus met een tijdslimiet per run. Geen effect op het hoofd
 - **Undo/redo** voor plaatsings- en verbindingsacties
 - **Zoomen & pannen** op het canvas
 - Inklapbare **Node Groups** voor organisatie van complexe subsystemen
+- **Markt-verkooppunten indicator**: in de NodeDetail-panel van een Markt-node staat per verkooppunt (per aangesloten invoer-dot) welke resource er doorheen loopt en hoeveel dat op dit moment per seconde oplevert (berekend als gemiddelde over de laatste seconde)
 
 ---
 
@@ -351,6 +356,7 @@ Een aparte uitdagingsmodus met een tijdslimiet per run. Geen effect op het hoofd
 - **Tick-frequentie**: 20 ticks per seconde (50 ms per tick); productiesnelheden worden uitgedrukt in eenheden per tick
 - **State management**: Tick-gebaseerde simulatie
 - **Persistentie**: localStorage (vroeg) → cloud save (later)
+- **Testbestanden**: alle tests staan in een `./__tests__/` map; bestandsnaam: `*.test.ts`
 
 ---
 
@@ -358,24 +364,32 @@ Een aparte uitdagingsmodus met een tijdslimiet per run. Geen effect op het hoofd
 
 - Monetisatie: gratis, betaald, of cosmetics? _(later te bepalen)_
 
+---
+
+## 12. Ontwikkelwerkwijze
+
+- **Kleine stappen**: elke codewijziging is één logische eenheid — één feature, één bugfix, één refactor. Combineer nooit meerdere losstaande wijzigingen in één commit.
+- **Losse commits per onderwerp**: een commit bevat wijzigingen die bij elkaar horen. Naamgeving volgt Conventional Commits: `feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:`.
+- **Tests eerst**: bij nieuwe simulatielogica schrijf je de test vóór de implementatie (TDD). De test documenteert het verwachte gedrag.
+- **Geen grote batches**: de situatie waarbij meerdere features in één keer worden geïmplementeerd en dan in één commit worden vastgelegd, moet worden vermeden. Als je merkt dat je meer dan 3–4 bestanden wijzigt voor één commit, splits dan op in kleinere stappen.
+- **Controleer voor commit**: voer altijd `npm test` en `vue-tsc --noEmit` uit vóór een commit; commit alleen als beide slagen.
+
 ## 13. Implementatie-architectuurnotities
 
 ### 13.1 Fractionele cycle-voortgang
 
 Elke node houdt een `progress: number` (float 0.0–N) bij die elke tick met `snelheidsfactor` wordt opgehoogd. Zodra `progress ≥ cyclusduur`, wordt één productiecyclus afgerond en wordt `progress` met `cyclusduur` verminderd. Buffers en inputs worden pas aangesproken op het moment dat de cyclus start (inputs) en eindigt (output).
 
-## 12. Implementatieaanbevelingen
+## 14. Implementatieaanbevelingen
 
-### 12.1 Balancetesten via TDD
+### 14.1 Balancetesten via TDD
 
-De balansdata in dit document (sectie 4.5, 5.2, 6.1) is precies genoeg om geautomatiseerde tests te schrijven vóór de UI bestaat. Aanbevolen testaanpak:
+De simulatielaag is volledig gedekt door 35 geautomatiseerde tests in `./__tests__/`. De tests volgen de aanpak hieronder. Als balanswaarden in dit document wijzigen, falen de betrokken tests direct — wat inconsistenties tussen ontwerp en implementatie voorkomt.
 
-| Testtype              | Wat het verifieert                                                                                                   |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| **Simulatietest**     | Geef een keten nodes op, draai N ticks, assert verwachte output op basis van recepten in 4.5                         |
-| **Balancetest**       | Bereken terugverdientijd per fabriek en assert dat hogere lagen altijd korter zijn bij niveau 1                      |
-| **Incometest**        | Start met €0 + IJzermijn, controleer of na X ticks voldoende geld is voor de volgende fabriek (tech tree progressie) |
-| **Reachability-test** | Verifieer dat de volledige raket-keten (sectie 8.1) geen doodlopende afhankelijkheden bevat                          |
-| **Energietest**       | Assert dat een Energy Supply-surplus de productiesnelheid correct schaalt per de tabel in 5.3                        |
-
-Voordeel: als balanswaarden in het document wijzigen, falen de tests direct — wat inconsistenties tussen ontwerp en implementatie voorkomt.
+| Testtype              | Wat het verifieert                                                                                                                                                 | Status                                                            |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- |
+| **Simulatietest**     | Geef een keten nodes op, draai N ticks, assert verwachte output op basis van recepten in 4.5                                                                       | ✅ Klaar                                                          |
+| **Balancetest**       | Bereken terugverdientijd (upgradekosten ÷ extra opbrengst/sec) per fabriek op basis van de nieuwe cyclustijden uit 4.5 en herbalanceerde tabel uit 6.1             | ⚠️ Aanpassen — cyclustijden ×40 en opbrengsten/sec zijn gewijzigd |
+| **Incometest**        | Start met €0 + IJzermijn + Energy Supply (beide gratis), controleer of na X ticks voldoende geld is voor de volgende fabriek (tech tree progressie uit sectie 7.1) | ⚠️ Aanpassen — startconditie gewijzigd (nu 2 nodes)               |
+| **Reachability-test** | Verifieer dat de volledige raket-keten (sectie 8.1) geen doodlopende afhankelijkheden bevat                                                                        | ✅ Klaar                                                          |
+| **Energietest**       | Assert dat een Energy Supply-surplus de productiesnelheid correct schaalt per de tabel in 5.3                                                                      | ✅ Klaar                                                          |
