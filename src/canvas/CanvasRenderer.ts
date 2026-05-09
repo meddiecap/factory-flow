@@ -143,12 +143,36 @@ const PROGRESS_BAR_HEIGHT = 4
 
 /** Status-to-colour mapping for the progress bar. */
 const STATUS_COLORS: Record<string, string> = {
-    active: "#22c55e",       // green-500
-    waiting: "#f97316",      // orange-500
+    active: "#22c55e", // green-500
+    waiting: "#f97316", // orange-500
     "output-blocked": "#ef4444", // red-500
-    idle: "#6b7280",         // gray-500
+    idle: "#6b7280", // gray-500
 }
+/**
+ * Returns a compact upgrade-level string for a node, or null when no upgrades
+ * are relevant for this node type (Splitter).
+ * Format matches the table in improvement 4 of improvements-v1.md.
+ *
+ * @param node - The node instance to summarize.
+ */
+function _upgradeText(node: NodeInstance): string | null {
+    const s = node.speedUpgradeLevel
+    const b = node.bufferUpgradeLevel
+    const e = node.energyEfficiencyUpgradeLevel
 
+    switch (node.type) {
+        case NodeType.Splitter:
+            return null
+        case NodeType.Warehouse:
+            return `— / ${b} / —`
+        case NodeType.Market:
+            return `${node.salesPoints ?? 1} / — / —`
+        case NodeType.EnergySupply:
+            return `${s} / ${b} / —`
+        default:
+            return `${s} / ${b} / ${e}`
+    }
+}
 /**
  * Draws a single node as a rectangle with label, input/output dots and a status bar.
  * Production nodes show a cycle-progress bar; Splitter shows its ratio; Warehouse
@@ -191,6 +215,23 @@ function drawNode(layer: Konva.Layer, node: NodeInstance): void {
             align: "center",
         }),
     )
+
+    // Upgrade level display (bottom-left, small monospace text)
+    const upgradeText = _upgradeText(node)
+    if (upgradeText !== null) {
+        layer.add(
+            new Konva.Text({
+                x: x + 4,
+                y: y + h - 16,
+                width: w - 8,
+                text: upgradeText,
+                fontSize: 9,
+                fontFamily: "monospace",
+                fill: "#9ca3af",
+                align: "center",
+            }),
+        )
+    }
 
     // Input dots (left edge, blue)
     const inputCount = def.inputs.length
