@@ -79,6 +79,23 @@ Private helpers die enkel intern worden gebruikt hoeven geen uitgebreide docbloc
 - Vue-componenten > 200 regels opsplitsen in sub-componenten of losse `<script>`-composables
 - Elk nieuw canvas-subsysteem krijgt een eigen bestand; nooit uitbreiden in een bestaand bestand dat al > 200 regels heeft
 
+## Scheiding simulatie en UI
+
+**Simulatielogica hoort nooit in een Vue-component.**
+
+| Laag              | Verantwoordelijkheid                                                                                                                           |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/simulation/` | Alle spellogica: tick-berekeningen, doorvoersnelheden, graaf-traversals, recepten, upgrades, energie. Pure TypeScript — geen Vue-imports.      |
+| `src/components/` | Weergave en gebruikersinteractie: lezen van `gameState` voor render, forwarden van click-events naar simulatiefuncties. Geen eigen spellogica. |
+
+**Signalen dat logica op de verkeerde plek zit:**
+
+- Een functie in een `.vue`-bestand accepteert `nodes` of `connections` als parameter.
+- Een `computed` in een component doet meer dan opmaak of selectie uit game state.
+- Logica is niet testbaar zonder een Vue-omgeving op te starten.
+
+Verplaats dergelijke functies naar een passend bestand in `src/simulation/` en exporteer ze als gewone TypeScript-functies.
+
 ## Spelregels voor code
 
 - Productiesnelheid wordt altijd uitgedrukt als **eenheden per tick**

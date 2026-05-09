@@ -448,3 +448,20 @@ Elke feature en elk stukje simulatielogica krijgt geautomatiseerde tests in `./_
 | **Reachability-test** | Verifieer dat de volledige raket-keten (sectie 8.1) geen doodlopende afhankelijkheden bevat                                                                 |
 | **Energietest**       | Assert dat een Energy Supply-surplus de productiesnelheid correct schaalt per formule in 5.3                                                                |
 | **Randgevaltest**     | Volle uitvoerbuffer blokkeert volgende cyclus; stilstaande fabriek verbruikt 0 brandstof; speedFactor schaalt lineair bij tekort (sectie 13.2–13.3)         |
+
+### 14.2 Scheiding van simulatielogica en Vue-componenten
+
+**Simulatielogica hoort nooit in een Vue-component.** Vue-components zijn verantwoordelijk voor weergave en gebruikersinteractie; alle berekeningen die op de spelstatus werken — doorvoersnelheden, opbrengsten, graaf-traversals, tick-berekeningen — horen in `src/simulation/`.
+
+Concrete grens:
+
+- **`src/simulation/`** — alles wat nodes, verbindingen, recepten, upgrades of ticks aanraakt. Pure TypeScript, geen Vue-imports.
+- **`src/components/`** — lezen van `gameState` voor weergave, aanroepen van simulatiefuncties via `import`, afhandelen van click-events. Geen eigen spellogica.
+
+**Signalen dat logica verkeerd zit:**
+
+- Een functie in een `.vue`-bestand accepteert `nodes` of `connections` als parameter.
+- Een computed-property in een component doet meer dan opmaak of selectie uit game state.
+- Logica is niet testbaar zonder een Vue-omgeving op te starten.
+
+**Actie:** functies als `traceUnitsPerTick` die grafen doorzoeken of doorvoersnelheden berekenen, worden verplaatst naar een passend bestand in `src/simulation/` (bijv. `src/simulation/throughput.ts`) en als gewone TypeScript-exports aangeboden.
