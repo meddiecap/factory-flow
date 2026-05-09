@@ -65,14 +65,14 @@ Elke node is een rechthoekig venster op het canvas met:
 
 Productie verloopt in lagen van toenemende complexiteit:
 
-| Laag                    | Voorbeeld                     |
-| ----------------------- | ----------------------------- |
-| Laag 0 – Grondstoffen   | IJzererts, Kolen, Zand        |
-| Laag 1 – Energie        | Brandstof                     |
-| Laag 2 – Halffabricaten | Stalen platen, Draden, Buizen |
-| Laag 3 – Componenten    | Motoren, Circuits, Tandwielen |
-| Laag 4 – Producten      | Machines, Apparaten           |
-| Laag 5 – Eindproduct    | Raket                         |
+| Laag                    | Producten in dit spel                                  |
+| ----------------------- | ------------------------------------------------------ |
+| Laag 0 – Grondstoffen   | IJzererts, Kolen, Koper, Silicium                      |
+| Laag 1 – Energie        | Brandstof                                              |
+| Laag 2 – Halffabricaten | Staal, Kabels                                          |
+| Laag 3 – Componenten    | Rompdelen, Brandstoftanks, Circuits, Besturingssysteem |
+| Laag 4 – Producten      | Stuwraketten                                           |
+| Laag 5 – Eindproduct    | Raket                                                  |
 
 ### 4.2 Ratio's & Bottlenecks
 
@@ -88,6 +88,16 @@ Als de aanvoer te langzaam is, produceert de fabriek trager. Dit is de **tactisc
 - Volle uitvoerbuffer → fabriek stopt
 - Lege invoerbuffer → fabriek wacht
 - Buffergrootte is upgradebaar
+
+**Standaard buffergroottes bij plaatsing:**
+
+| Fabriektype               | Invoerbuffer | Uitvoerbuffer |
+| ------------------------- | ------------ | ------------- |
+| Mijnen & Energy Supply    | —            | 20            |
+| Smelterij, Kabelproductie | 20           | 10            |
+| Gieterij, Chipfabriek     | 10           | 10            |
+| Elektronica, Motoren      | 10           | 5             |
+| Assemblage                | 10           | 1             |
 
 ### 4.4 Bijzondere Nodes
 
@@ -169,6 +179,9 @@ Elk goed heeft een **vaste prijs** die niet verandert op basis van aanbod. Prijz
 | +50                        | ×1.9                |
 | +200                       | ×2.1                |
 
+Formule: `multiplier = 1 + 0.2 × ln(surplus + 1)`
+De asymptoot ligt bij ×2.2; in de praktijk is het verschil boven +200 verwaarloosbaar.
+
 Boven een bepaald surplusniveau loont het meer om een fabriek direct te upgraden dan nog meer Energy Supplies te bouwen.
 
 ---
@@ -233,15 +246,15 @@ Er is geen maximumniveau; upgrades schalen altijd door, maar het rendement daalt
 
 De speler begint met alleen de **IJzermijn**. Elke volgende fabriek wordt vrijgespeeld door voldoende geld te verdienen:
 
-| Volgorde | Fabriek / Node                           | Vrijspelen door                     |
-| -------- | ---------------------------------------- | ----------------------------------- |
-| 1        | IJzermijn (Bron)                         | Direct beschikbaar                  |
-| 2        | Energy Supply                            | Eerste IJzererts-inkomsten          |
-| 3        | Kolenmijn, Kopermijn, Siliciummijn       | Geld uit IJzererts en Brandstof     |
-| 4        | Smelterij                                | Vergt sparen; levert sterk meer op  |
-| 5        | Gieterij, Kabelproductie                 | Na eerste Staal-productie           |
-| 6        | Chipfabriek, Elektronica, Motorenfabriek | Vereist volledige grondstoffenketen |
-| 7        | Assemblage                               | Eindstation; produceert de Raket    |
+| Volgorde | Fabriek / Node                           | Vrijspelen bij totaal verdiend |
+| -------- | ---------------------------------------- | ------------------------------ |
+| 1        | IJzermijn (Bron)                         | Direct beschikbaar             |
+| 2        | Energy Supply                            | €50                            |
+| 3        | Kolenmijn, Kopermijn, Siliciummijn       | €200                           |
+| 4        | Smelterij                                | €800                           |
+| 5        | Gieterij, Kabelproductie                 | €3.000                         |
+| 6        | Chipfabriek, Elektronica, Motorenfabriek | €15.000                        |
+| 7        | Assemblage                               | €40.000                        |
 
 > Prestige-interactie met de tech tree wordt later uitgewerkt. Voor nu reset elke run naar een schone lei.
 
