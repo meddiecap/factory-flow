@@ -25,6 +25,8 @@ De cyclus is **nooit volledig idle**: de speler moet actief beslissingen nemen o
 
 **Pacing:** een eerste run duurt naar schatting 45–90 minuten. In latere runs versnelt dit door opgeslagen schematics.
 
+**Startcondities:** de speler begint met **€0** en één **vooraf geplaatste IJzermijn** (gratis). Deze telt als n=1 in de incrementele bouwkostformule; een tweede IJzermijn kost €75 (€50 × 1.5). Er is geen startbudget.
+
 ---
 
 ## 3. Het Canvas & Node Systeem
@@ -43,7 +45,7 @@ Elke node is een rechthoekig venster op het canvas met:
 
 - Lijnen worden gesleept van een **output-dot naar een input-dot**
 - Conventionele richting: **links → rechts**
-- Lijnen hebben een **maximale doorvoercapaciteit** (upgradebaar)
+- Lijnen hebben een **maximale doorvoercapaciteit** van standaard **10 eenheden/tick** (upgradebaar via Lijnkapaciteit-upgrade)
 - Kleurcodering van lijnen geeft doorvoerstatus aan:
     - Groen: optimale flow
     - Oranje: gedeeltelijk benut / lichte bottleneck
@@ -54,6 +56,8 @@ Elke node is een rechthoekig venster op het canvas met:
 - Het canvas is een **2D-grid**: fabrieken nemen één of meer celvakken in beslag en snappen automatisch in op de dichtstbijzijnde cel
 - Geen pixelprecieze plaatsing vereist — de speler sleept een fabriek naar een cel en laat los
 - Het grid is **eindig maar uitbreidbaar** (koop meer rijen/kolommen met geld; er is geen hard maximum)
+- **Startgrootte**: 20 kolommen × 12 rijen
+- **Uitbreidingskosten**: `€200 × 1.5^n` per rij of kolom, waarbij n het totaal aantal reeds gekochte uitbreidingen is (1e uitbreiding: €200, 2e: €300, 3e: €450, …)
 - Lijnen lopen langs de randen van gridcellen; kruisingen zijn toegestaan maar visueel onderscheiden
 - **Node Groups**: meerdere nodes bundelen in één inklapbare container
 
@@ -101,14 +105,16 @@ Als de aanvoer te langzaam is, produceert de fabriek trager. Dit is de **tactisc
 
 ### 4.4 Bijzondere Nodes
 
-| Node                   | Functie                                                               |
-| ---------------------- | --------------------------------------------------------------------- |
-| **Bron**               | Produceert grondstoffen (laag 0), upgradebaar in snelheid             |
-| **Energy Supply**      | Produceert Brandstof zonder grondstofkosten; upgradebaar in productie |
-| **Splitter/Allocator** | Verdeelt 1 input over 2 outputs met instelbare ratio (bv. 70/30)      |
-| **Opslagpakhuis**      | Grote buffer tussen twee fabrieken                                    |
-| **Markt/Verkooppunt**  | Zet goederen om in geld                                               |
-| **Node Group**         | Meerdere nodes bundelen tot één container                             |
+| Node                   | Functie                                                                                          |
+| ---------------------- | ------------------------------------------------------------------------------------------------ |
+| **Bron**               | Produceert grondstoffen (laag 0), upgradebaar in snelheid                                        |
+| **Energy Supply**      | Produceert Brandstof zonder grondstofkosten; upgradebaar in productie                            |
+| **Splitter/Allocator** | Verdeelt 1 input over 2 outputs met instelbare ratio via fractionele accumulatie (zie hieronder) |
+| **Opslagpakhuis**      | Grote buffer tussen twee fabrieken                                                               |
+| **Markt/Verkooppunt**  | Pure sink; verkoopt automatisch alles wat binnenkomt; geen outputdot; standaard 20 eenheden/tick |
+| **Node Group**         | Meerdere nodes bundelen tot één container                                                        |
+
+**Splitter — fractionele accumulatie**: elke tick wordt de ratio opgeteld bij twee interne accumulatoren. Zodra een accumulator ≥ 1 bereikt, stuurt hij 1 eenheid door en trekt hij 1 af. Voorbeeld bij 70/30: accumulator A krijgt +0.7/tick, B +0.3/tick. Tick 1: A=0.7, B=0.3. Tick 2: A=1.4 → stuurt 1 door, A=0.4; B=0.6. Tick 3: A=1.1 → stuurt 1 door, A=0.1; B=0.9. Tick 4: A=0.8; B=1.2 → stuurt 1 door, B=0.2. Over 10 ticks: 7 naar A, 3 naar B.
 
 ### 4.5 Fabrieksrecepten
 
@@ -135,6 +141,15 @@ Voorbeeld: 3e IJzermijn = €50 × 1.5² = €113.
 
 > \* Motorenfabriek verbruikt naast 2 brandstof/tick als energiebron ook 2 brandstof per cyclus als recept-input (= 0.5/tick extra bij basissnelheid).
 > Assemblage is uniek; er wordt slechts één gebouwd.
+
+**Gridgrootte per fabriek:**
+
+| Fabriek                                                                       | Gridcellen |
+| ----------------------------------------------------------------------------- | ---------- |
+| IJzermijn, Kolenmijn, Kopermijn, Siliciummijn, Energy Supply, Markt, Splitter | 2 × 1      |
+| Smelterij, Kabelproductie, Gieterij, Chipfabriek, Elektronica, Motorenfabriek | 2 × 2      |
+| Opslagpakhuis                                                                 | 2 × 2      |
+| Assemblage                                                                    | 4 × 3      |
 
 ---
 
@@ -184,19 +199,26 @@ De asymptoot ligt bij ×2.2; in de praktijk is het verschil boven +200 verwaarlo
 
 Boven een bepaald surplusniveau loont het meer om een fabriek direct te upgraden dan nog meer Energy Supplies te bouwen.
 
+> **Architectuurnotitie — twee rollen van Brandstof:**
+>
+> 1. **Globale energiepool** — elke tick telt de simulator alle geproduceerde Brandstof op minus het totale verbruik (Brandstof/tick-kolom uit sectie 4.5). Het netto surplus bepaalt de snelheidsmultiplier voor álle fabrieken. Dit verloopt _niet_ via verbindingen.
+> 2. **Recept-input** (alleen Motorenfabriek) — Brandstof als grondstof wordt via een gewone verbindingslijn aangeleverd en per productiecyclus verbruikt. Dit staat los van de globale pool.
+>
+> De Motorenfabriek verbruikt Brandstof dus op twee manieren tegelijk: 2/tick uit de globale pool (energie) + 0.5/tick via verbinding (recept-input bij basissnelheid).
+
 ---
 
 ## 6. Upgrades
 
 Upgrades zijn per-node beschikbaar en kosten geld. Elke upgrade heeft **afnemend meerrendement**: hogere niveaus kosten exponentieel meer maar leveren steeds minder extra opbrengst op.
 
-| Upgrade             | Effect                                                                        |
-| ------------------- | ----------------------------------------------------------------------------- |
-| Snelheid            | Productiesnelheid ×1.5 per upgradeniveau (elke stap ×3 duurder; geen maximum) |
-| Buffer              | Invoer-/uitvoerbuffer vergroten                                               |
-| Efficiëntie         | Inputverbruik verlagen (bv. 2.5× i.p.v. 3× erts)                              |
-| Lijnkapaciteit      | Maximale doorvoer van verbindingslijn verhogen                                |
-| Energie-efficiëntie | Verlaagt Brandstof-verbruik van een specifieke fabriek                        |
+| Upgrade             | Effect                                                                                                                            |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Snelheid            | Multiplicatief: niveau n geeft ×1.5ⁿ boven basissnelheid (n=1: ×1.5; n=2: ×2.25; n=3: ×3.375); elke stap ×3 duurder; geen maximum |
+| Buffer              | +10 eenheden per niveau op zowel invoer- als uitvoerbuffer                                                                        |
+| Efficiëntie         | −10% inputverbruik per niveau (minimum 50% van basis); n=1: ×2.7 i.p.v. ×3 erts; n=5: ×1.5                                        |
+| Lijnkapaciteit      | +10 eenheden/tick per niveau boven de standaard van 10 (n=1: 20/tick; n=2: 30/tick)                                               |
+| Energie-efficiëntie | −10% Brandstof-verbruik per niveau van één specifieke fabriek (minimum 50% van basis)                                             |
 
 ### 6.1 Marginaal Rendement
 
