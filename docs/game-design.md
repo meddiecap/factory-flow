@@ -100,8 +100,6 @@ Als de aanvoer te langzaam is, produceert de fabriek trager. Dit is de **tactisc
 | **Markt/Verkooppunt**  | Zet goederen om in geld                                               |
 | **Node Group**         | Meerdere nodes bundelen tot één container                             |
 
----
-
 ### 4.5 Fabrieksrecepten
 
 Alle fabrieken met hun productierecept, cyclusduur, bouwkosten en brandstofverbruik.
@@ -322,3 +320,19 @@ Een aparte uitdagingsmodus met een tijdslimiet per run. Geen effect op het hoofd
 ## 11. Openstaande Vragen
 
 - Monetisatie: gratis, betaald, of cosmetics? _(later te bepalen)_
+
+## 12. Implementatieaanbevelingen
+
+### 12.1 Balancetesten via TDD
+
+De balansdata in dit document (sectie 4.5, 5.2, 6.1) is precies genoeg om geautomatiseerde tests te schrijven vóór de UI bestaat. Aanbevolen testaanpak:
+
+| Testtype              | Wat het verifieert                                                                                                   |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| **Simulatietest**     | Geef een keten nodes op, draai N ticks, assert verwachte output op basis van recepten in 4.5                         |
+| **Balancetest**       | Bereken terugverdientijd per fabriek en assert dat hogere lagen altijd korter zijn bij niveau 1                      |
+| **Incometest**        | Start met €0 + IJzermijn, controleer of na X ticks voldoende geld is voor de volgende fabriek (tech tree progressie) |
+| **Reachability-test** | Verifieer dat de volledige raket-keten (sectie 8.1) geen doodlopende afhankelijkheden bevat                          |
+| **Energietest**       | Assert dat een Energy Supply-surplus de productiesnelheid correct schaalt per de tabel in 5.3                        |
+
+Voordeel: als balanswaarden in het document wijzigen, falen de tests direct — wat inconsistenties tussen ontwerp en implementatie voorkomt.
