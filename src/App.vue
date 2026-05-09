@@ -5,6 +5,8 @@ import { CanvasInteraction } from './canvas/CanvasInteraction'
 import { NodeType } from './simulation/types'
 import { gameState, placeNode, addConnection } from './simulation/useGameState'
 import PalettePanel from './ui/PalettePanel.vue'
+import HudBar from './ui/HudBar.vue'
+import DetailPanel from './ui/DetailPanel.vue'
 
 const canvasWidth = GRID_COLS * CELL_SIZE
 const canvasHeight = GRID_ROWS * CELL_SIZE
@@ -55,11 +57,20 @@ watch(() => gameState.tick, refresh)
 </script>
 
 <template>
-  <div class="flex h-screen w-screen overflow-hidden bg-gray-900">
-    <!-- Left palette sidebar -->
-    <PalettePanel />
+  <div class="flex h-screen w-screen flex-col overflow-hidden bg-gray-900">
+    <!-- Top HUD bar -->
+    <HudBar />
 
-    <!-- Canvas container – Konva mounts inside this div -->
-    <div id="game-canvas" :style="{ width: `${canvasWidth}px`, height: `${canvasHeight}px` }" class="shrink-0" />
+    <!-- Main area: palette | canvas | detail panel -->
+    <div class="flex min-h-0 flex-1 overflow-hidden">
+      <!-- Left palette sidebar -->
+      <PalettePanel />
+
+      <!-- Canvas container – Konva mounts inside this div -->
+      <div id="game-canvas" :style="{ width: `${canvasWidth}px`, height: `${canvasHeight}px` }" class="shrink-0" />
+
+      <!-- Right detail panel (only visible when a node is selected) -->
+      <DetailPanel :node-id="selectedNodeId" @close="selectedNodeId = null" />
+    </div>
   </div>
 </template>

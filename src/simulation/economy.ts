@@ -91,3 +91,17 @@ export function canUnlock(type: NodeType, state: GameState): boolean {
 export function buildCost(baseCost: number, existingCount: number): number {
     return Math.ceil(baseCost * 1.5 ** existingCount)
 }
+
+/**
+ * Calculates the cost to purchase the next upgrade level for a node.
+ * Level 1 costs 2× the node's base build cost; each subsequent level is 3× more expensive.
+ * Formula: `baseCost × 2 × 3^currentLevel`
+ * Matches the marginal-return table in section 6.1.
+ *
+ * @param baseCost - The base build cost of the node type (from NODE_DEFS).
+ * @param currentLevel - The node's current upgrade level (0 = not yet upgraded).
+ * @returns The cost in whole currency units (€) to reach the next level.
+ */
+export function upgradeCost(baseCost: number, currentLevel: number): number {
+    return Math.ceil(baseCost * 2 * 3 ** currentLevel)
+}
