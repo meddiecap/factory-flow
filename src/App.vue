@@ -7,6 +7,7 @@ import { gameState, placeNode, addConnection, moveNode, removeConnection, reconn
 import { tick, checkWin } from './simulation/simulator'
 import { tickMarket } from './simulation/economy'
 import { saveState, loadState, clearState } from './simulation/persistence'
+import { initSequences } from './simulation/useGameState'
 import PalettePanel from './ui/PalettePanel.vue'
 import HudBar from './ui/HudBar.vue'
 import DetailPanel from './ui/DetailPanel.vue'
@@ -58,6 +59,7 @@ onMounted(() => {
   const saved = loadState()
   if (saved !== null) {
     Object.assign(gameState, saved)
+    initSequences(saved)
   }
 
   renderer = new CanvasRenderer('game-canvas')

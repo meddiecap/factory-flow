@@ -24,6 +24,24 @@ function newConnId(): string {
 }
 
 /**
+ * Synchronises the internal ID counters with a restored game state.
+ * Must be called after `Object.assign(gameState, saved)` so that newly placed
+ * nodes and connections never reuse an ID that already exists in the state.
+ *
+ * @param state - The restored game state whose IDs should be scanned.
+ */
+export function initSequences(state: GameState): void {
+    for (const node of state.nodes) {
+        const n = parseInt(node.id.replace("node-", ""), 10)
+        if (!isNaN(n) && n > _nodeSeq) _nodeSeq = n
+    }
+    for (const conn of state.connections) {
+        const n = parseInt(conn.id.replace("conn-", ""), 10)
+        if (!isNaN(n) && n > _connSeq) _connSeq = n
+    }
+}
+
+/**
  * Returns true when a newly placed node (at col, row) would overlap any existing node.
  * Overlap is determined by checking that the bounding rectangles do not intersect.
  *
