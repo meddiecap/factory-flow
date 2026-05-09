@@ -45,6 +45,7 @@ Elke node is een rechthoekig venster op het canvas met:
 
 - Lijnen worden gesleept van een **output-dot naar een input-dot**
 - Conventionele richting: **links → rechts**
+- **Één lijn per dot**: elke invoer- en uitvoer-dot accepteert precies één verbinding. Voor het splitsen van output gebruik je de Splitter-node.
 - Lijnen hebben een **maximale doorvoercapaciteit** van standaard **10 eenheden/tick** (upgradebaar via Lijnkapaciteit-upgrade)
 - Kleurcodering van lijnen geeft doorvoerstatus aan:
     - Groen: optimale flow
@@ -110,7 +111,7 @@ Als de aanvoer te langzaam is, produceert de fabriek trager. Dit is de **tactisc
 | **Bron**               | Produceert grondstoffen (laag 0), upgradebaar in snelheid                                        |
 | **Energy Supply**      | Produceert Brandstof zonder grondstofkosten; upgradebaar in productie                            |
 | **Splitter/Allocator** | Verdeelt 1 input over 2 outputs met instelbare ratio via fractionele accumulatie (zie hieronder) |
-| **Opslagpakhuis**      | Grote buffer tussen twee fabrieken                                                               |
+| **Opslagpakhuis**      | Grote buffer tussen twee fabrieken; 200 eenheden invoer én uitvoer                               |
 | **Markt/Verkooppunt**  | Pure sink; verkoopt automatisch alles wat binnenkomt; geen outputdot; standaard 20 eenheden/tick |
 | **Node Group**         | Meerdere nodes bundelen tot één container                                                        |
 
@@ -184,7 +185,7 @@ Elk goed heeft een **vaste prijs** die niet verandert op basis van aanbod. Prijz
 
 - Alle fabrieken verbruiken **Brandstof** per tick om te produceren
 - Brandstof wordt geproduceerd door de **Energy Supply**-node (geen grondstofkosten)
-- Een tekort aan Brandstof vertraagt alle fabrieken proportioneel
+- Een tekort aan Brandstof vertraagt alle fabrieken proportioneel: `snelheidsfactor = beschikbaar / benodigd` (lineair, minimum 0; fabrieken kunnen volledig stoppen)
 - **Surplus Brandstof** geeft een productiesnelheid-bonus met afnemend meerrendement:
 
 | Brandstof-surplus per tick | Snelheidsmultiplier |
@@ -355,6 +356,12 @@ Een aparte uitdagingsmodus met een tijdslimiet per run. Geen effect op het hoofd
 ## 11. Openstaande Vragen
 
 - Monetisatie: gratis, betaald, of cosmetics? _(later te bepalen)_
+
+## 13. Implementatie-architectuurnotities
+
+### 13.1 Fractionele cycle-voortgang
+
+Elke node houdt een `progress: number` (float 0.0–N) bij die elke tick met `snelheidsfactor` wordt opgehoogd. Zodra `progress ≥ cyclusduur`, wordt één productiecyclus afgerond en wordt `progress` met `cyclusduur` verminderd. Buffers en inputs worden pas aangesproken op het moment dat de cyclus start (inputs) en eindigt (output).
 
 ## 12. Implementatieaanbevelingen
 
