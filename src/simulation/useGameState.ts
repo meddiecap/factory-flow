@@ -254,6 +254,13 @@ export function reconnectConnection(
     const conn = gameState.connections.find((c) => c.id === connectionId)
     if (conn === undefined) return false
 
+    // Validate that fromDotIndex refers to a real output and toDotIndex to a real input.
+    const fromNode = gameState.nodes.find((n) => n.id === fromNodeId)
+    const toNode = gameState.nodes.find((n) => n.id === toNodeId)
+    if (fromNode === undefined || toNode === undefined) return false
+    if (fromDotIndex >= fromNode.outputBuffers.length) return false
+    if (toDotIndex >= toNode.inputBuffers.length) return false
+
     // Build the connection list without this connection for cycle/dot checks.
     const others = gameState.connections.filter((c) => c.id !== connectionId)
 
@@ -312,6 +319,13 @@ export function addConnection(
     toDotIndex: number,
 ): boolean {
     if (fromNodeId === toNodeId) return false
+
+    // Validate that fromDotIndex refers to a real output and toDotIndex to a real input.
+    const fromNode = gameState.nodes.find((n) => n.id === fromNodeId)
+    const toNode = gameState.nodes.find((n) => n.id === toNodeId)
+    if (fromNode === undefined || toNode === undefined) return false
+    if (fromDotIndex >= fromNode.outputBuffers.length) return false
+    if (toDotIndex >= toNode.inputBuffers.length) return false
 
     if (wouldCreateCycle(fromNodeId, toNodeId, gameState.connections))
         return false

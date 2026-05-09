@@ -524,20 +524,22 @@ export class CanvasInteraction {
                     rd.grabbedSide === "output" ? "input" : "output"
                 const hit = this._findNearestDot(pos, targetSide)
                 if (hit !== null) {
+                    // Grabbed the output end → moving WHERE this output goes → hit is a new INPUT dot.
+                    // Grabbed the input end → moving WHERE this input comes FROM → hit is a new OUTPUT dot.
                     const fromNodeId =
-                        rd.grabbedSide === "output"
-                            ? hit.nodeId // moving the output end → new from
+                        rd.grabbedSide === "input"
+                            ? hit.nodeId // grabbed input end → change source → hit is OUTPUT dot
                             : rd.originalFromNodeId
                     const fromDotIndex =
-                        rd.grabbedSide === "output"
+                        rd.grabbedSide === "input"
                             ? hit.dotIndex
                             : rd.originalFromDotIndex
                     const toNodeId =
-                        rd.grabbedSide === "input"
-                            ? hit.nodeId // moving the input end → new to
+                        rd.grabbedSide === "output"
+                            ? hit.nodeId // grabbed output end → change destination → hit is INPUT dot
                             : rd.originalToNodeId
                     const toDotIndex =
-                        rd.grabbedSide === "input"
+                        rd.grabbedSide === "output"
                             ? hit.dotIndex
                             : rd.originalToDotIndex
                     this.callbacks.onReconnect(
