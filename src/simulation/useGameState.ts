@@ -34,6 +34,10 @@ export function initSequences(state: GameState): void {
     for (const node of state.nodes) {
         const n = parseInt(node.id.replace("node-", ""), 10)
         if (!isNaN(n) && n > _nodeSeq) _nodeSeq = n
+        // Migrate saves that predate the energyOutputUpgradeLevel field.
+        if (node.energyOutputUpgradeLevel === undefined) {
+            node.energyOutputUpgradeLevel = 0
+        }
     }
     for (const conn of state.connections) {
         const n = parseInt(conn.id.replace("conn-", ""), 10)

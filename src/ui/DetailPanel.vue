@@ -72,7 +72,7 @@ const isEnergySupply = computed(() => node.value?.type === NodeType.EnergySupply
 /** Cost of the next Energy Output upgrade (EnergySupply only): €150 × 2^level. */
 const energyOutputUpgradeCost = computed(() =>
     node.value && def.value
-        ? upgradeCost(def.value.buildCost, node.value.energyOutputUpgradeLevel)
+        ? upgradeCost(def.value.buildCost, node.value.energyOutputUpgradeLevel ?? 0)
         : 0,
 )
 
@@ -307,13 +307,12 @@ function bufferColour(amount: number, capacity: number): string {
             <div v-if="isEnergySupply" class="mb-1.5 flex items-center justify-between gap-2">
                 <div>
                     <span>Energy Output</span>
-                    <span class="ml-1 text-gray-500">+{{ node.energyOutputUpgradeLevel }} ⚡/tick</span>
+                    <span class="ml-1 text-gray-500">+{{ node.energyOutputUpgradeLevel ?? 0 }} ⚡/tick</span>
                 </div>
                 <button class="rounded px-2 py-0.5 font-medium transition-colors" :class="canAfford(energyOutputUpgradeCost)
                     ? 'bg-yellow-600 hover:bg-yellow-500 text-white cursor-pointer'
                     : 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-60'
-                    " :disabled="!canAfford(energyOutputUpgradeCost)"
-                    title="Increase energy output by +1.0 per tick"
+                    " :disabled="!canAfford(energyOutputUpgradeCost)" title="Increase energy output by +1.0 per tick"
                     @click="buyUpgrade('energyOutput')">
                     €{{ energyOutputUpgradeCost }}
                 </button>

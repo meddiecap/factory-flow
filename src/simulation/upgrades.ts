@@ -96,7 +96,10 @@ export function applyUpgrade(
         case "energyOutput": {
             // Only applicable to EnergySupply nodes.
             if (def.energyOutputPerTick === undefined) return false
-            const cost = upgradeCost(def.buildCost, node.energyOutputUpgradeLevel)
+            const cost = upgradeCost(
+                def.buildCost,
+                node.energyOutputUpgradeLevel,
+            )
             if (state.money < cost) return false
             state.money -= cost
             node.energyOutputUpgradeLevel++
