@@ -45,15 +45,19 @@ export function tickNode(
     // Utility / pass-through nodes are handled elsewhere.
     if (def.cycleDuration === 0) return
 
-    // --- Output-blocked check ---
-    const outputFull = def.outputs.some((out, i) => {
-        const buf = node.outputBuffers[i]
-        return buf !== undefined && buf.amount >= buf.capacity
-    })
+    // --- Output-blocked check (skipped for Energy Supply) ---
+    // Energy Supply overflows its buffer silently instead of stopping, so the
+    // global energy pool is never cut off by a full local buffer (improvement 8).
+    if (!isEnergySupply(node.type)) {
+        const outputFull = def.outputs.some((out, i) => {
+            const buf = node.outputBuffers[i]
+            return buf !== undefined && buf.amount >= buf.capacity
+        })
 
-    if (outputFull) {
-        node.status = "output-blocked"
-        return
+        if (outputFull) {
+            node.status = "output-blocked"
+            return
+        }
     }
 
     // --- Input check: does the node have enough resources for one cycle? ---

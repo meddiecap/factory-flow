@@ -26,13 +26,13 @@ export function calcSpeedFactor(
         if (def === undefined) continue
 
         if (isEnergySupply(node.type)) {
-            // Energy Supply nodes that are not blocked produce fuel.
-            if (node.status !== "output-blocked") {
-                // Each cycle produces `outputs[0].amount` fuel over `cycleDuration` ticks.
-                // The global pool counts fuel produced per tick at full speed.
-                const fuelPerTick = def.outputs[0]!.amount / def.cycleDuration
-                produced += fuelPerTick
-            }
+            // Energy Supply nodes always contribute to the global pool.
+            // They never become output-blocked (see tickNode); overflow is silently
+            // discarded and does not add a bonus to the pool beyond the base rate.
+            // Each cycle produces `outputs[0].amount` fuel over `cycleDuration` ticks.
+            // The global pool counts fuel produced per tick at full speed.
+            const fuelPerTick = def.outputs[0]!.amount / def.cycleDuration
+            produced += fuelPerTick
         } else if (def.cycleDuration > 0) {
             // Production node: only consumes fuel when active (not waiting or output-blocked).
             if (node.status !== "waiting" && node.status !== "output-blocked") {

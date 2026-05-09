@@ -114,3 +114,59 @@ describe("tickNode", () => {
         expect(node.outputBuffers[0]!.amount).toBe(1)
     })
 })
+
+describe("tickNode – Energy Supply overflow (improvement 8)", () => {
+    const energySupplyDef: NodeDef = {
+        displayName: "Energy Supply",
+        inputs: [],
+        outputs: [{ resource: ResourceType.Fuel, amount: 2 }],
+        cycleDuration: 40,
+        buildCost: 150,
+        fuelPerTick: 0,
+        gridSize: { width: 2, height: 1 },
+        defaultInputCapacity: 0,
+        defaultOutputCapacity: 20,
+    }
+
+    it("never sets status to output-blocked when output buffer is full", () => {
+        const node = makeNode({
+            type: NodeType.EnergySupply,
+            outputBuffers: [
+                { resource: ResourceType.Fuel, amount: 20, capacity: 20 },
+            ],
+        })
+
+        tickNode(node, energySupplyDef, 1)
+        expect(node.status).not.toBe("output-blocked")
+    })
+
+    it("continues advancing progress when output buffer is full", () => {
+        const node = makeNode({
+            type: NodeType.EnergySupply,
+            outputBuffers: [
+                { resource: ResourceType.Fuel, amount: 20, capacity: 20 },
+            ],
+        })
+
+        tickNode(node, energySupplyDef, 1)
+        expect(node.progress).toBeGreaterThan(0)
+        expect(node.status).toBe("active")
+    })
+
+    it("discards overflow silently and caps buffer at capacity when cycle completes", () => {
+        // Start with a full buffer and progress just below completion.
+        const node = makeNode({
+            type: NodeType.EnergySupply,
+            progress: 39,
+            outputBuffers: [
+                { resource: ResourceType.Fuel, amount: 20, capacity: 20 },
+            ],
+        })
+
+        // One tick at speedFactor=1 completes the cycle; output amount = 2 but buffer is full.
+        tickNode(node, energySupplyDef, 1)
+        // Buffer should remain capped, not exceed capacity.
+        expect(node.outputBuffers[0]!.amount).toBe(20)
+        expect(node.status).toBe("active")
+    })
+})

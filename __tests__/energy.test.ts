@@ -100,4 +100,19 @@ describe("calcSpeedFactor", () => {
         const expected = 1 + 0.2 * Math.log(50 + 1)
         expect(factor).toBeCloseTo(expected, 1)
     })
+
+    it("counts Energy Supply even when its output buffer would have been full (improvement 8)", () => {
+        // Before improvement 8 an output-blocked ES was excluded from the pool.
+        // Now the node is never output-blocked, but we verify via calcSpeedFactor
+        // that an ES with status 'active' (full buffer scenario) is still counted.
+        // 10 ES at active status → same result as the baseline test.
+        const nodes: NodeInstance[] = [
+            ...Array.from({ length: 10 }, () =>
+                makeNode(NodeType.EnergySupply, "active"),
+            ),
+            makeNode(NodeType.IronMine),
+        ]
+        const factor = calcSpeedFactor(nodes, NODE_DEFS)
+        expect(factor).toBeCloseTo(1.0, 5)
+    })
 })
