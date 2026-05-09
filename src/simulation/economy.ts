@@ -1,6 +1,6 @@
 import { NodeType } from "./types"
 import type { GameState } from "./types"
-import { MARKET_PRICES } from "./recipes"
+import { MARKET_PRICES, NODE_DEFS } from "./recipes"
 
 /** Maximum units sold per Market sales point per tick (from section 4.4). */
 const MARKET_SALES_PER_POINT_PER_TICK = 20
@@ -15,6 +15,7 @@ const UNLOCK_THRESHOLDS: Partial<Record<NodeType, number>> = {
     [NodeType.CoalMine]: 200,
     [NodeType.CopperMine]: 200,
     [NodeType.SiliconMine]: 200,
+    [NodeType.Warehouse]: 200,
     [NodeType.Smelter]: 800,
     [NodeType.Foundry]: 3000,
     [NodeType.CableFactory]: 3000,
@@ -78,17 +79,26 @@ export function canUnlock(type: NodeType, state: GameState): boolean {
 }
 
 /**
+ * Node types whose build cost is flat (no escalation per subsequent instance).
+ * These are utility nodes where repeated placement is expected and should stay affordable.
+ */
+const FLAT_COST_TYPES = new Set<NodeType>([NodeType.Splitter])
+
+/**
  * Calculates the purchase cost for the n-th node of a given type.
- * Uses the escalating cost formula from section 4.5:
+ * Splitter uses a flat price (no escalation).
+ * All other node types use the escalating cost formula from section 4.5:
  *   `cost_n = baseCost × 1.5^(n - 1)`
  * where n is the count of nodes of that type already placed (1-based).
  * Returns a whole number (rounded up).
  *
- * @param baseCost - The base build cost for the node type (from NODE_DEFS).
+ * @param type - The NodeType being purchased.
  * @param existingCount - How many nodes of this type are already on the canvas.
  * @returns The purchase price in whole currency units (€).
  */
-export function buildCost(baseCost: number, existingCount: number): number {
+export function buildCost(type: NodeType, existingCount: number): number {
+    const baseCost = NODE_DEFS[type].buildCost
+    if (FLAT_COST_TYPES.has(type)) return baseCost
     return Math.ceil(baseCost * 1.5 ** existingCount)
 }
 

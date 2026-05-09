@@ -9,7 +9,7 @@ import type {
 import { NODE_DEFS } from "../simulation/recipes"
 import { canUnlock, buildCost } from "../simulation/economy"
 
-let _nodeSeq = 3 // start after the two pre-placed nodes
+let _nodeSeq = 4 // start after the three pre-placed nodes
 
 /** Generates a unique node id for each newly placed node. */
 function newNodeId(): string {
@@ -107,13 +107,15 @@ const energySupplyStart = createNodeInstance(
     1,
     3,
 )
+// The first Market is free and pre-placed so the player always has a sales outlet.
+const marketStart = createNodeInstance("node-3", NodeType.Market, 5, 1)
 
 /**
  * Reactive game state shared across all Vue components and the canvas renderer.
- * Pre-populated with the two free starter nodes from section 2 of the design doc.
+ * Pre-populated with the three free starter nodes from the design doc.
  */
 export const gameState = reactive<GameState>({
-    nodes: [ironMineStart, energySupplyStart],
+    nodes: [ironMineStart, energySupplyStart, marketStart],
     connections: [],
     money: 0,
     totalEarned: 0,
@@ -145,7 +147,7 @@ export function placeNode(type: NodeType, col: number, row: number): boolean {
 
     const def = NODE_DEFS[type]
     const existing = countNodes(type)
-    const cost = buildCost(def.buildCost, existing)
+    const cost = buildCost(type, existing)
 
     if (gameState.money < cost) return false
 

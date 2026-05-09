@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest"
 import { tickMarket, canUnlock, buildCost } from "../src/simulation/economy"
-import { NODE_DEFS } from "../src/simulation/recipes"
 import { NodeType, ResourceType } from "../src/simulation/types"
 import type { GameState, NodeInstance } from "../src/simulation/types" // Used in income test — static import avoids top-level await restriction.
 import { tick } from "../src/simulation/simulator"
@@ -105,19 +104,36 @@ describe("canUnlock", () => {
 
 describe("buildCost", () => {
     it("returns the base cost for the first node (n=0 existing)", () => {
-        const base = NODE_DEFS[NodeType.IronMine].buildCost // €50
-        expect(buildCost(base, 0)).toBe(50)
+        // IronMine base = €50; first placement has 0 existing → €50.
+        expect(buildCost(NodeType.IronMine, 0)).toBe(50)
     })
 
     it("returns base × 1.5 for the second node (n=1 existing)", () => {
-        const base = NODE_DEFS[NodeType.IronMine].buildCost // €50
-        expect(buildCost(base, 1)).toBe(75) // 50 × 1.5
+        // IronMine: 50 × 1.5 = 75
+        expect(buildCost(NodeType.IronMine, 1)).toBe(75)
     })
 
     it("returns base × 1.5² for the third node — example from design doc: €113", () => {
-        const base = NODE_DEFS[NodeType.IronMine].buildCost // €50
-        // 50 × 1.5² = 50 × 2.25 = 112.5 → ceil = 113
-        expect(buildCost(base, 2)).toBe(113)
+        // IronMine: 50 × 1.5² = 112.5 → ceil = 113
+        expect(buildCost(NodeType.IronMine, 2)).toBe(113)
+    })
+
+    it("Splitter always costs €100 regardless of existing count (flat price)", () => {
+        expect(buildCost(NodeType.Splitter, 0)).toBe(100)
+        expect(buildCost(NodeType.Splitter, 1)).toBe(100)
+        expect(buildCost(NodeType.Splitter, 5)).toBe(100)
+    })
+
+    it("Warehouse scales: €300, €450, €675 for 1st, 2nd, 3rd", () => {
+        expect(buildCost(NodeType.Warehouse, 0)).toBe(300)
+        expect(buildCost(NodeType.Warehouse, 1)).toBe(450)
+        expect(buildCost(NodeType.Warehouse, 2)).toBe(675)
+    })
+
+    it("Market scales: €500, €750, €1125 for 1st, 2nd, 3rd", () => {
+        expect(buildCost(NodeType.Market, 0)).toBe(500)
+        expect(buildCost(NodeType.Market, 1)).toBe(750)
+        expect(buildCost(NodeType.Market, 2)).toBe(1125)
     })
 
     it("income test: IronMine + EnergySupply earns ≥€50 within 2000 ticks", () => {

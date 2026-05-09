@@ -182,7 +182,7 @@ export const NODE_DEFS: Record<NodeType, NodeDef> = {
         ],
         // Splitter operates per-tick via fractional accumulators, not per cycle.
         cycleDuration: 0,
-        buildCost: 0,
+        buildCost: 100,
         fuelPerTick: 0,
         gridSize: { width: 2, height: 1 },
         defaultInputCapacity: 10,
@@ -194,7 +194,7 @@ export const NODE_DEFS: Record<NodeType, NodeDef> = {
         inputs: [{ resource: ResourceType.IronOre, amount: 0 }], // dynamic: any resource
         outputs: [{ resource: ResourceType.IronOre, amount: 0 }], // dynamic: mirrors input
         cycleDuration: 0,
-        buildCost: 0,
+        buildCost: 300,
         fuelPerTick: 0,
         gridSize: { width: 2, height: 2 },
         defaultInputCapacity: 200,
@@ -206,7 +206,7 @@ export const NODE_DEFS: Record<NodeType, NodeDef> = {
         inputs: [{ resource: ResourceType.IronOre, amount: 0 }], // dynamic: any resource
         outputs: [], // pure sink
         cycleDuration: 0,
-        buildCost: 0,
+        buildCost: 500,
         fuelPerTick: 0,
         gridSize: { width: 2, height: 1 },
         defaultInputCapacity: 20,
