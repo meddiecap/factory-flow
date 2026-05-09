@@ -65,14 +65,14 @@ Elke node is een rechthoekig venster op het canvas met:
 
 Productie verloopt in lagen van toenemende complexiteit:
 
-| Laag                     | Voorbeeld                                       |
-| ------------------------ | ----------------------------------------------- |
-| Laag 0 – Grondstoffen    | IJzererts, Kolen, Zand                          |
-| Laag 1 – Basisverwerking | Gesmolten ijzer, Glas                           |
-| Laag 2 – Halffabricaten  | Stalen platen, Draden, Buizen                   |
-| Laag 3 – Componenten     | Motoren, Circuits, Tandwielen                   |
-| Laag 4 – Producten       | Machines, Apparaten                             |
-| Laag 5 – Eindproduct     | (per run bepaald, bv. Raket, Computer, Fabriek) |
+| Laag                     | Voorbeeld                     |
+| ------------------------ | ----------------------------- |
+| Laag 0 – Grondstoffen    | IJzererts, Kolen, Zand        |
+| Laag 1 – Basisverwerking | Gesmolten ijzer, Glas         |
+| Laag 2 – Halffabricaten  | Stalen platen, Draden, Buizen |
+| Laag 3 – Componenten     | Motoren, Circuits, Tandwielen |
+| Laag 4 – Producten       | Machines, Apparaten           |
+| Laag 5 – Eindproduct     | Raket                         |
 
 ### 4.2 Ratio's & Bottlenecks
 
@@ -91,13 +91,14 @@ Als de aanvoer te langzaam is, produceert de fabriek trager. Dit is de **tactisc
 
 ### 4.4 Bijzondere Nodes
 
-| Node                   | Functie                                                          |
-| ---------------------- | ---------------------------------------------------------------- |
-| **Bron**               | Produceert grondstoffen (laag 0), upgradebaar in snelheid        |
-| **Splitter/Allocator** | Verdeelt 1 input over 2 outputs met instelbare ratio (bv. 70/30) |
-| **Opslagpakhuis**      | Grote buffer tussen twee fabrieken                               |
-| **Markt/Verkooppunt**  | Zet goederen om in geld                                          |
-| **Node Group**         | Meerdere nodes bundelen tot één container                        |
+| Node                   | Functie                                                               |
+| ---------------------- | --------------------------------------------------------------------- |
+| **Bron**               | Produceert grondstoffen (laag 0), upgradebaar in snelheid             |
+| **Energy Supply**      | Produceert Brandstof zonder grondstofkosten; upgradebaar in productie |
+| **Splitter/Allocator** | Verdeelt 1 input over 2 outputs met instelbare ratio (bv. 70/30)      |
+| **Opslagpakhuis**      | Grote buffer tussen twee fabrieken                                    |
+| **Markt/Verkooppunt**  | Zet goederen om in geld                                               |
+| **Node Group**         | Meerdere nodes bundelen tot één container                             |
 
 ---
 
@@ -110,37 +111,85 @@ Als de aanvoer te langzaam is, produceert de fabriek trager. Dit is de **tactisc
 
 ### 5.2 Marktprijzen
 
-- Elk goed heeft een **vaste prijs** die niet verandert op basis van aanbod
-- Hogere-laag producten leveren meer op maar zijn moeilijker te maken
-- De prijs weerspiegelt de productiecomplexiteit: meer verwerkingsstappen = hogere waarde
+Elk goed heeft een **vaste prijs** die niet verandert op basis van aanbod. Prijzen stijgen sterk per laag zodat de speler altijd wordt gemotiveerd om door te ontwikkelen — laag-0-producten blijven verkopen loont niet op de lange termijn.
 
-### 5.3 Lopende Kosten
+| Laag | Resource          | Verkoopprijs                      |
+| ---- | ----------------- | --------------------------------- |
+| 0    | IJzererts         | €2                                |
+| 0    | Kolen             | €3                                |
+| 0    | Koper             | €4                                |
+| 0    | Silicium          | €4                                |
+| 1    | Brandstof         | €10                               |
+| 2    | Staal             | €60                               |
+| 2    | Kabels            | €40                               |
+| 3    | Rompdelen         | €250                              |
+| 3    | Brandstoftanks    | €200                              |
+| 3    | Circuits          | €400                              |
+| 3    | Besturingssysteem | €1.600                            |
+| 4    | Stuwraketten      | €5.000                            |
+| 5    | Raket             | — (winconditie, niet verkoopbaar) |
 
-- Fabrieken hebben **energiekosten** per seconde
-- Gestopte fabrieken verbruiken minder energie (maar niet nul)
-- Dwingt de speler om inefficiënte fabrieken af te sluiten of te upgraden
+### 5.3 Energie
+
+- Alle fabrieken verbruiken **Brandstof** per tick om te produceren
+- Brandstof wordt geproduceerd door de **Energy Supply**-node (geen grondstofkosten)
+- Een tekort aan Brandstof vertraagt alle fabrieken proportioneel
+- **Surplus Brandstof** geeft een productiesnelheid-bonus met afnemend meerrendement:
+
+| Brandstof-surplus per tick | Snelheidsmultiplier |
+| -------------------------- | ------------------- |
+| 0 (precies genoeg)         | ×1.0                |
+| +10                        | ×1.5                |
+| +50                        | ×1.9                |
+| +200                       | ×2.1                |
+
+Boven een bepaald surplusniveau loont het meer om een fabriek direct te upgraden dan nog meer Energy Supplies te bouwen.
 
 ---
 
 ## 6. Upgrades
 
-Upgrades zijn per-node beschikbaar en kosten geld:
+Upgrades zijn per-node beschikbaar en kosten geld. Elke upgrade heeft **afnemend meerrendement**: hogere niveaus kosten exponentieel meer maar leveren steeds minder extra opbrengst op.
 
-| Upgrade             | Effect                                             |
-| ------------------- | -------------------------------------------------- |
-| Snelheid            | Productiesnelheid ×1.5 / ×2 / ×3                   |
-| Buffer              | Invoer-/uitvoerbuffer vergroten                    |
-| Efficiëntie         | Inputverbruik verlagen (bv. 2.5× i.p.v. 3× erts)   |
-| Lijnkapaciteit      | Maximale doorvoer van verbindingslijn verhogen     |
-| Energie-efficiëntie | Verlaagt stroomverbruik van een specifieke fabriek |
+| Upgrade             | Effect                                                 |
+| ------------------- | ------------------------------------------------------ |
+| Snelheid            | Productiesnelheid ×1.5 / ×2 / ×3 (elke stap duurder)   |
+| Buffer              | Invoer-/uitvoerbuffer vergroten                        |
+| Efficiëntie         | Inputverbruik verlagen (bv. 2.5× i.p.v. 3× erts)       |
+| Lijnkapaciteit      | Maximale doorvoer van verbindingslijn verhogen         |
+| Energie-efficiëntie | Verlaagt Brandstof-verbruik van een specifieke fabriek |
+
+### 6.1 Marginaal Rendement
+
+Het rendement van een upgrade = **extra opbrengst per tick ÷ upgradekosten**. Hogere-laag fabrieken produceren duurdere goederen per tick, waardoor hun upgrades meer opleveren — ook al zijn ze nominaal duurder. Dit drijft de speler organisch naar hogere productielagen:
+
+- Energy Supply niveau 8 upgraden is doorgaans minder rendabel dan Smelterij niveau 2 upgraden
+- Smelterij niveau 10 kan minder interessant zijn dan Gieterij niveau 2 upgraden
+- Als de Energy Supply de bottleneck is (Brandstof-tekort vertraagt alles), is dat de meest rendabele upgrade
+
+Er is geen maximumniveau; upgrades schalen altijd door, maar het rendement daalt zodanig dat de speler altijd een betere optie vindt elders in de keten.
 
 ---
 
 ## 7. Tech Tree
 
 - Ontgrendelt **nieuwe fabriektypes** en **recepten**
-- Vereist bepaalde mijlpalen: bv. "Produceer 1000× Staal" of "Verdien €1M"
+- Vereist bepaalde mijlpalen: bv. "Produceer 500× IJzererts" of "Verdien €500"
 - Structureel: boom van lagen die grofweg overeenkomen met productielagen
+
+### 7.1 Startpositie en progressie
+
+De speler begint met alleen de **IJzermijn**. Elke volgende fabriek wordt vrijgespeeld door voldoende geld te verdienen:
+
+| Volgorde | Fabriek / Node                           | Vrijspelen door                     |
+| -------- | ---------------------------------------- | ----------------------------------- |
+| 1        | IJzermijn (Bron)                         | Direct beschikbaar                  |
+| 2        | Energy Supply                            | Eerste IJzererts-inkomsten          |
+| 3        | Kolenmijn, Kopermijn, Siliciummijn       | Geld uit IJzererts en Brandstof     |
+| 4        | Smelterij                                | Vergt sparen; levert sterk meer op  |
+| 5        | Gieterij, Kabelproductie                 | Na eerste Staal-productie           |
+| 6        | Chipfabriek, Elektronica, Motorenfabriek | Vereist volledige grondstoffenketen |
+| 7        | Assemblage                               | Eindstation; produceert de Raket    |
 
 > Prestige-interactie met de tech tree wordt later uitgewerkt. Voor nu reset elke run naar een schone lei.
 
@@ -155,6 +204,7 @@ Het einddoel van het spel is de **Raket**. De productieketen:
 | Stap           | Invoer                                               | Uitvoer                           |
 | -------------- | ---------------------------------------------------- | --------------------------------- |
 | Mijnbouw       | —                                                    | IJzererts, Kolen, Koper, Silicium |
+| Energy Supply  | —                                                    | Brandstof                         |
 | Smelterij      | IJzererts + Kolen                                    | Staal                             |
 | Gieterij       | Staal                                                | Rompdelen, Brandstoftanks         |
 | Kabelproductie | Koper                                                | Kabels                            |
@@ -209,7 +259,8 @@ Een aparte uitdagingsmodus met een tijdslimiet per run. Geen effect op het hoofd
 - **Input**: muis en toetsenbord (PC); drag-and-drop via muisevents
 - **Grondstoffen (laag 0)**: onbeperkt; bronnen produceren continu zolang ze actief zijn
 - **Single-player**: geen multiplayer
-- **State management**: Tick-gebaseerde simulatie (elke X ms wordt flow berekend)
+- **Tick-frequentie**: 20 ticks per seconde (50 ms per tick); productiesnelheden worden uitgedrukt in eenheden per tick
+- **State management**: Tick-gebaseerde simulatie
 - **Persistentie**: localStorage (vroeg) → cloud save (later)
 
 ---
