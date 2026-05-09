@@ -309,10 +309,16 @@ function drawNode(
         const speedMultiplier = 1.5 ** node.speedUpgradeLevel
         const primaryOutput = def.outputs[0]
         const ratePerSec = primaryOutput
-            ? (primaryOutput.amount * speedFactor * speedMultiplier / def.cycleDuration) * 20
+            ? ((primaryOutput.amount * speedFactor * speedMultiplier) /
+                  def.cycleDuration) *
+              20
             : 0
         const statsColor =
-            speedFactor === 0 ? "#f87171" : speedFactor < 1 ? "#fbbf24" : "#9ca3af"
+            speedFactor === 0
+                ? "#f87171"
+                : speedFactor < 1
+                  ? "#fbbf24"
+                  : "#9ca3af"
         layer.add(
             new Konva.Text({
                 x: x + 4,
@@ -706,7 +712,11 @@ export class CanvasRenderer {
 
         drawConnections(this.connectionLayer, state.connections, nodeMap)
 
-        const speedFactors = calcNodeSpeedFactors(state.nodes, state.connections, NODE_DEFS)
+        const speedFactors = calcNodeSpeedFactors(
+            state.nodes,
+            state.connections,
+            NODE_DEFS,
+        )
 
         for (const node of state.nodes) {
             // For EnergySupply: count how many energy connections it currently has.
