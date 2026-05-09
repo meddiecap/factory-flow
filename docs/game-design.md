@@ -25,7 +25,7 @@ De cyclus is **nooit volledig idle**: de speler moet actief beslissingen nemen o
 
 **Pacing:** een eerste run duurt naar schatting 45–90 minuten. In latere runs versnelt dit door opgeslagen schematics.
 
-**Startcondities:** de speler begint met **€0** en één **vooraf geplaatste IJzermijn** (gratis). Deze telt als n=1 in de incrementele bouwkostformule; een tweede IJzermijn kost €75 (€50 × 1.5). Er is geen startbudget.
+**Startcondities:** de speler begint met **€0** en twee **vooraf geplaatste nodes**: een **IJzermijn** en een **Energy Supply** (beide gratis, beide tellen als n=1 in de bouwkostformule). Zonder een Energy Supply is de snelheidsmultiplier 0 — de deadlock-preventiestarter. Een tweede IJzermijn kost €75 (€50 × 1.5); een tweede Energy Supply kost €225 (€150 × 1.5). Er is geen startbudget.
 
 ---
 
@@ -106,14 +106,14 @@ Als de aanvoer te langzaam is, produceert de fabriek trager. Dit is de **tactisc
 
 ### 4.4 Bijzondere Nodes
 
-| Node                   | Functie                                                                                          |
-| ---------------------- | ------------------------------------------------------------------------------------------------ |
-| **Bron**               | Produceert grondstoffen (laag 0), upgradebaar in snelheid                                        |
-| **Energy Supply**      | Produceert Brandstof zonder grondstofkosten; upgradebaar in productie                            |
-| **Splitter/Allocator** | Verdeelt 1 input over 2 outputs met instelbare ratio via fractionele accumulatie (zie hieronder) |
-| **Opslagpakhuis**      | Grote buffer tussen twee fabrieken; 200 eenheden invoer én uitvoer                               |
-| **Markt/Verkooppunt**  | Pure sink; verkoopt automatisch alles wat binnenkomt; geen outputdot; standaard 20 eenheden/tick |
-| **Node Group**         | Meerdere nodes bundelen tot één container                                                        |
+| Node                   | Functie                                                                                                                                                                                                                                                                        |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Bron**               | Produceert grondstoffen (laag 0), upgradebaar in snelheid                                                                                                                                                                                                                      |
+| **Energy Supply**      | Produceert Brandstof zonder grondstofkosten; upgradebaar in productie                                                                                                                                                                                                          |
+| **Splitter/Allocator** | Verdeelt 1 input over 2 outputs met instelbare ratio via fractionele accumulatie (zie hieronder)                                                                                                                                                                               |
+| **Opslagpakhuis**      | Grote buffer als tussenstation. Verbind de **uitvoer-dot van een productienode** met de **invoer-dot links** van het pakhuis. Verbind de **uitvoer-dot rechts** van het pakhuis met de invoer-dot van de volgende schakel. Accepteert elk resourcetype; 200 eenheden per kant. |
+| **Markt/Verkooppunt**  | Pure sink; geen uitvoer-dot. Verbind de **uitvoer-dot van een productienode** met de **invoer-dot links** van de Markt. De Markt verkoopt automatisch alles wat binnenkomt; max 20 eenheden/tick per tick.                                                                     |
+| **Node Group**         | Meerdere nodes bundelen tot één container                                                                                                                                                                                                                                      |
 
 **Splitter — fractionele accumulatie**: elke tick wordt de ratio opgeteld bij twee interne accumulatoren. Zodra een accumulator ≥ 1 bereikt, stuurt hij 1 eenheid door en trekt hij 1 af. Voorbeeld bij 70/30: accumulator A krijgt +0.7/tick, B +0.3/tick. Tick 1: A=0.7, B=0.3. Tick 2: A=1.4 → stuurt 1 door, A=0.4; B=0.6. Tick 3: A=1.1 → stuurt 1 door, A=0.1; B=0.9. Tick 4: A=0.8; B=1.2 → stuurt 1 door, B=0.2. Over 10 ticks: 7 naar A, 3 naar B.
 
@@ -269,15 +269,15 @@ Er is geen maximumniveau; upgrades schalen altijd door, maar het rendement daalt
 
 De speler begint met alleen de **IJzermijn**. Elke volgende fabriek wordt vrijgespeeld door voldoende geld te verdienen:
 
-| Volgorde | Fabriek / Node                           | Vrijspelen bij totaal verdiend |
-| -------- | ---------------------------------------- | ------------------------------ |
-| 1        | IJzermijn (Bron)                         | Direct beschikbaar             |
-| 2        | Energy Supply                            | €50                            |
-| 3        | Kolenmijn, Kopermijn, Siliciummijn       | €200                           |
-| 4        | Smelterij                                | €800                           |
-| 5        | Gieterij, Kabelproductie                 | €3.000                         |
-| 6        | Chipfabriek, Elektronica, Motorenfabriek | €15.000                        |
-| 7        | Assemblage                               | €40.000                        |
+| Volgorde | Fabriek / Node                                             | Vrijspelen bij totaal verdiend |
+| -------- | ---------------------------------------------------------- | ------------------------------ |
+| 1        | IJzermijn (Bron) + Energy Supply _(1× gratis bij opstart)_ | Direct beschikbaar             |
+| 2        | Energy Supply _(extra exemplaren kopen)_                   | €50                            |
+| 3        | Kolenmijn, Kopermijn, Siliciummijn                         | €200                           |
+| 4        | Smelterij                                                  | €800                           |
+| 5        | Gieterij, Kabelproductie                                   | €3.000                         |
+| 6        | Chipfabriek, Elektronica, Motorenfabriek                   | €15.000                        |
+| 7        | Assemblage                                                 | €40.000                        |
 
 > Prestige-interactie met de tech tree wordt later uitgewerkt. Voor nu reset elke run naar een schone lei.
 
@@ -341,6 +341,7 @@ Een aparte uitdagingsmodus met een tijdslimiet per run. Geen effect op het hoofd
 - **Platform**: Browser (HTML5 Canvas / WebGL)
 - **Taal**: TypeScript (geen framework op het canvas zelf)
 - **UI-laag**: Vue.js voor panelen, menus, upgrades en HUD buiten het canvas
+- **Styling**: TailwindCSS voor de opmaak van Vue-componenten
 - **Canvas-libraries**: Konva.js of custom canvas (geen React Flow)
 - **Grid**: vaste celgrootte; nodes snappen in op gridposities
 - **Node-representatie**: elke fabriek beslaat één of meer gridcellen; gekleurde cirkels op de linkerrand zijn invoerpunten, op de rechterrand uitvoerpunten; lijnen worden gesleept van uitvoer naar invoer
