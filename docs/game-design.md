@@ -161,13 +161,40 @@ Upgrades zijn per-node beschikbaar en kosten geld. Elke upgrade heeft **afnemend
 
 ### 6.1 Marginaal Rendement
 
-Het rendement van een upgrade = **extra opbrengst per tick ÷ upgradekosten**. Hogere-laag fabrieken produceren duurdere goederen per tick, waardoor hun upgrades meer opleveren — ook al zijn ze nominaal duurder. Dit drijft de speler organisch naar hogere productielagen:
+Het rendement van een upgrade = **extra opbrengst per seconde ÷ upgradekosten**. Hogere-laag fabrieken produceren duurdere goederen, waardoor hun upgrades sneller terugverdiend zijn — ook al kosten ze nominaal meer.
 
-- Energy Supply niveau 8 upgraden is doorgaans minder rendabel dan Smelterij niveau 2 upgraden
-- Smelterij niveau 10 kan minder interessant zijn dan Gieterij niveau 2 upgraden
-- Als de Energy Supply de bottleneck is (Brandstof-tekort vertraagt alles), is dat de meest rendabele upgrade
+**Snelheidsupgrade niveau 1 (×1.5) — terugverdientijd per fabriek**
 
-Er is geen maximumniveau; upgrades schalen altijd door, maar het rendement daalt zodanig dat de speler altijd een betere optie vindt elders in de keten.
+Aanname: elke fabriek produceert bij basissnelheid het opgegeven aantal eenheden per seconde; upgrade geeft +50%.
+
+| Fabriek        | Product      | Prijs  | Basis inkomst/sec | Upgrade L1 kosten | Extra/sec | Terugverdientijd |
+| -------------- | ------------ | ------ | ----------------- | ----------------- | --------- | ---------------- |
+| IJzermijn      | IJzererts    | €2     | €2                | €50               | +€1       | **50 sec**       |
+| Kolenmijn      | Kolen        | €3     | €3                | €75               | +€1,50    | **50 sec**       |
+| Kopermijn      | Koper        | €4     | €4                | €75               | +€2       | **37 sec**       |
+| Smelterij      | Staal        | €60    | €60               | €500              | +€30      | **17 sec**       |
+| Kabelproductie | Kabels       | €40    | €40               | €400              | +€20      | **20 sec**       |
+| Chipfabriek    | Circuits     | €400   | €200 \*           | €3.000            | +€100     | **30 sec**       |
+| Motorenfabriek | Stuwraketten | €5.000 | €1.250 \*\*       | €15.000           | +€625     | **24 sec**       |
+
+> \* Chipfabriek produceert 0,5 eenheid/sec (complexer recept)
+> \*\* Motorenfabriek produceert 0,25 eenheid/sec (langste productiecyclus)
+
+Mijnbouw-upgrades verdienen zich ~50 sec terug; Smelterij slechts 17 sec. Hoe hoger de productielaag, hoe sneller niveau 1 zich terugverdient.
+
+---
+
+**Schaling over meerdere niveaus — upgradekost groeit ×3 per niveau**
+
+| Upgrade niveau | IJzermijn | Smelterij | Chipfabriek |
+| -------------- | --------- | --------- | ----------- |
+| Niveau 1       | 50 sec    | 17 sec    | 30 sec      |
+| Niveau 2       | 150 sec   | 50 sec    | 90 sec      |
+| Niveau 3       | 450 sec   | 150 sec   | 270 sec     |
+
+Zodra Smelterij niveau 2 wordt (terugverdientijd 50 sec), is een nog-niet-geüpgrade Chipfabriek niveau 1 (30 sec) aantrekkelijker. Als de Energy Supply de bottleneck is (Brandstof-tekort vertraagt alles), kan die tijdelijk de beste keuze zijn — ongeacht de laag.
+
+Er is geen maximumniveau; upgrades schalen altijd door, maar het rendement daalt zodanig dat de speler altijd een betere optie elders in de keten vindt.
 
 ---
 
