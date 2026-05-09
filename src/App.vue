@@ -4,6 +4,8 @@ import { CanvasRenderer, GRID_COLS, GRID_ROWS, CELL_SIZE } from './canvas/Canvas
 import { CanvasInteraction } from './canvas/CanvasInteraction'
 import { NodeType } from './simulation/types'
 import { gameState, placeNode, addConnection } from './simulation/useGameState'
+import { tick } from './simulation/simulator'
+import { tickMarket } from './simulation/economy'
 import PalettePanel from './ui/PalettePanel.vue'
 import HudBar from './ui/HudBar.vue'
 import DetailPanel from './ui/DetailPanel.vue'
@@ -16,6 +18,13 @@ const selectedNodeId = ref<string | null>(null)
 
 let renderer: CanvasRenderer | null = null
 let interaction: CanvasInteraction | null = null
+let simulationInterval: ReturnType<typeof setInterval> | null = null
+
+/** Advances the simulation by one tick and runs market selling. Called 20×/sec. */
+function simulationStep(): void {
+  tick(gameState)
+  tickMarket(gameState)
+}
 
 /** Re-renders the canvas and rebuilds dot hit areas after any state change. */
 function refresh(): void {
@@ -46,9 +55,13 @@ onMounted(() => {
   })
 
   interaction.rebuildDotHits(gameState)
+
+  // Start the simulation loop at 20 ticks/second (section 8).
+  simulationInterval = setInterval(simulationStep, 50)
 })
 
 onUnmounted(() => {
+  if (simulationInterval !== null) clearInterval(simulationInterval)
   renderer?.destroy()
 })
 
