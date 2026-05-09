@@ -1,28 +1,4 @@
-/**
- * All resource types that exist in the game, ordered by production layer.
- * Used throughout the simulation to identify goods flowing through connections.
- */
-export enum ResourceType {
-    // Layer 0 – Raw materials
-    IronOre = "IronOre",
-    Coal = "Coal",
-    Copper = "Copper",
-    Silicon = "Silicon",
-    // Layer 1 – Energy
-    Fuel = "Fuel",
-    // Layer 2 – Semi-finished goods
-    Steel = "Steel",
-    Cables = "Cables",
-    // Layer 3 – Components
-    HullParts = "HullParts",
-    FuelTanks = "FuelTanks",
-    Circuits = "Circuits",
-    ControlSystem = "ControlSystem",
-    // Layer 4 – Products
-    Thrusters = "Thrusters",
-    // Layer 5 – End product (win condition)
-    Rocket = "Rocket",
-}
+import type { RecipeInput, RecipeOutput } from "./resources"
 
 /**
  * All placeable node types on the canvas, including special utility nodes.
@@ -68,31 +44,11 @@ export type NodeStatus =
  * Tracks current stock and the maximum it can hold.
  */
 export interface Buffer {
-    resource: ResourceType
+    resource: import("./resources").ResourceType
     /** Current number of units stored. */
     amount: number
     /** Maximum number of units this buffer slot can hold. */
     capacity: number
-}
-
-/**
- * One ingredient required per production cycle.
- * Used in NodeDef.inputs to describe recipe requirements.
- */
-export interface RecipeInput {
-    resource: ResourceType
-    /** Amount consumed from the input buffer per cycle. */
-    amount: number
-}
-
-/**
- * One item produced per production cycle.
- * Used in NodeDef.outputs to describe what a node creates.
- */
-export interface RecipeOutput {
-    resource: ResourceType
-    /** Amount added to the output buffer per cycle. */
-    amount: number
 }
 
 /**
@@ -192,51 +148,4 @@ export interface NodeInstance {
      * Output B receives (1 - ratioA).
      */
     splitterRatioA?: number
-}
-
-/**
- * A directed connection between the output dot of one node and the input dot of another.
- * Goods flow from the source node's output buffer to the target node's input buffer each tick.
- */
-export interface Connection {
-    /** Unique identifier for this connection. */
-    id: string
-    fromNodeId: string
-    /** Index of the output dot on the source node (0-based). */
-    fromDotIndex: number
-    toNodeId: string
-    /** Index of the input dot on the target node (0-based). */
-    toDotIndex: number
-    /**
-     * Maximum units that can flow through this connection per tick.
-     * Base value is 10; increased by line capacity upgrades.
-     */
-    capacity: number
-    /** Line capacity upgrade level; each level adds +10 units/tick. */
-    capacityUpgradeLevel: number
-    /**
-     * True when this connection carries energy from an Energy Supply to a factory.
-     * Energy connections are drawn in yellow and processed separately from resource flow.
-     */
-    isEnergy?: boolean
-}
-
-/**
- * Complete runtime state of one game session.
- * Passed to every simulation tick function and persisted to localStorage.
- */
-export interface GameState {
-    nodes: NodeInstance[]
-    connections: Connection[]
-    /** Current spendable money in whole currency units (€). */
-    money: number
-    /** Cumulative money earned this run; used for tech tree unlock thresholds. */
-    totalEarned: number
-    /** Number of simulation ticks elapsed since the run started. */
-    tick: number
-    /**
-     * Transfer events from the most recent tick, used by the renderer to spawn
-     * particle animations. Not persisted to localStorage.
-     */
-    lastTransfers?: import("./connections").TransferEvent[]
 }
