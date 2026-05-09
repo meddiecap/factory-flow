@@ -174,6 +174,23 @@ export function placeNode(type: NodeType, col: number, row: number): boolean {
 }
 
 /**
+ * Moves an existing node to a new grid position, clamped to the canvas bounds.
+ * Connections are not affected; they follow because they reference node ids.
+ * No overlap check is performed (nodes may overlap by design).
+ *
+ * @param nodeId - The id of the node to move.
+ * @param col - Target grid column (top-left).
+ * @param row - Target grid row (top-left).
+ */
+export function moveNode(nodeId: string, col: number, row: number): void {
+    const node = gameState.nodes.find((n) => n.id === nodeId)
+    if (node === undefined) return
+    const def = NODE_DEFS[node.type]
+    node.position.col = Math.max(0, Math.min(col, 40 - def.gridSize.width))
+    node.position.row = Math.max(0, Math.min(row, 24 - def.gridSize.height))
+}
+
+/**
  * Adds a directed connection from an output dot to an input dot.
  * Validates that neither dot is already connected (one line per dot rule).
  *

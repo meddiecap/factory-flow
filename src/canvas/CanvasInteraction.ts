@@ -92,6 +92,29 @@ export interface CanvasInteractionCallbacks {
     onSelectNode: (nodeId: string | null) => void
     /** Called when the user drops a palette item onto the canvas. */
     onDropNode: (type: string, col: number, row: number) => void
+    /** Called when the user finishes dragging a node to a new grid position. */
+    onMoveNode: (nodeId: string, col: number, row: number) => void
+}
+
+/** Minimum pixel movement before a node body mousedown is treated as a drag. */
+const NODE_DRAG_THRESHOLD = 4
+
+/** State tracked while the user is dragging a node body. */
+interface NodeDragState {
+    nodeId: string
+    /** Width and height of the node in grid cells (for clamping and ghost). */
+    widthCells: number
+    heightCells: number
+    /** Canvas-pixel offset from pointer to top-left of node at drag start. */
+    offsetX: number
+    offsetY: number
+    /** Pixel position where the drag started (to detect threshold). */
+    startX: number
+    startY: number
+    /** Whether the drag threshold has been exceeded. */
+    active: boolean
+    /** Ghost rectangle shown during drag. */
+    ghost: Konva.Rect
 }
 
 /**
@@ -105,6 +128,7 @@ export class CanvasInteraction {
     private dragLayer: Konva.Layer
     private dragLine: Konva.Line | null = null
     private dragStart: DotRef | null = null
+    private nodeDrag: NodeDragState | null = null
     private callbacks: CanvasInteractionCallbacks
     private containerEl: HTMLElement
 
@@ -182,7 +206,7 @@ export class CanvasInteraction {
                 this.dragLayer.add(circle)
             }
 
-            // Node body click to select
+            // Node body – mousedown starts a potential node drag; click selects.
             const bx = colToPx(node.position.col)
             const by = rowToPx(node.position.row)
             const bw = def.gridSize.width * CELL_SIZE
@@ -196,7 +220,43 @@ export class CanvasInteraction {
                 fill: "transparent",
             })
             hitRect.setAttr("selectNodeId", node.id)
-            hitRect.on("click tap", () => this.callbacks.onSelectNode(node.id))
+            hitRect.on("mousedown touchstart", (e) => {
+                // Don't initiate a node drag when a dot drag is already started.
+                if (this.dragStart !== null) return
+                const pos = this.stage.getPointerPosition()
+                if (pos === null) return
+                const ghost = new Konva.Rect({
+                    name: "node-ghost",
+                    x: bx,
+                    y: by,
+                    width: bw,
+                    height: bh,
+                    fill: "#3b82f6",
+                    opacity: 0.35,
+                    stroke: "#93c5fd",
+                    strokeWidth: 2,
+                    dash: [6, 3],
+                    visible: false,
+                })
+                this.dragLayer.add(ghost)
+                this.nodeDrag = {
+                    nodeId: node.id,
+                    widthCells: def.gridSize.width,
+                    heightCells: def.gridSize.height,
+                    offsetX: pos.x - bx,
+                    offsetY: pos.y - by,
+                    startX: pos.x,
+                    startY: pos.y,
+                    active: false,
+                    ghost,
+                }
+            })
+            hitRect.on("click tap", () => {
+                // Only select when not finishing a drag.
+                if (this.nodeDrag === null || !this.nodeDrag.active) {
+                    this.callbacks.onSelectNode(node.id)
+                }
+            })
             this.dragLayer.add(hitRect)
         }
 
@@ -212,7 +272,13 @@ export class CanvasInteraction {
         this.stage.on("mouseup.drag touchend.drag", (e) => this._onDragEnd(e))
     }
 
-    // ── Private helpers ──────────────────────────────────────────────────────
+    /** Snaps a pixel coordinate to the nearest grid column/row. */
+    private _snapCol(px: number): number {
+        return Math.max(0, Math.floor(px / CELL_SIZE))
+    }
+    private _snapRow(py: number): number {
+        return Math.max(0, Math.floor(py / CELL_SIZE))
+    }
 
     private _startDrag(
         nodeId: string,
@@ -234,50 +300,88 @@ export class CanvasInteraction {
     private _onDragMove(
         e: Konva.KonvaEventObject<MouseEvent | TouchEvent>,
     ): void {
-        if (this.dragLine === null || this.dragStart === null) return
         const pos = this.stage.getPointerPosition()
         if (pos === null) return
-        this.dragLine.points([this.dragStart.x, this.dragStart.y, pos.x, pos.y])
-        this.dragLayer.batchDraw()
+
+        // --- Connection drag ---
+        if (this.dragLine !== null && this.dragStart !== null) {
+            this.dragLine.points([this.dragStart.x, this.dragStart.y, pos.x, pos.y])
+            this.dragLayer.batchDraw()
+            return
+        }
+
+        // --- Node drag ---
+        if (this.nodeDrag === null) return
+        const nd = this.nodeDrag
+        const dx = pos.x - nd.startX
+        const dy = pos.y - nd.startY
+        if (!nd.active && Math.sqrt(dx * dx + dy * dy) >= NODE_DRAG_THRESHOLD) {
+            nd.active = true
+            nd.ghost.visible(true)
+        }
+        if (nd.active) {
+            const topLeftX = pos.x - nd.offsetX
+            const topLeftY = pos.y - nd.offsetY
+            // Snap ghost to grid
+            const col = this._snapCol(topLeftX)
+            const row = this._snapRow(topLeftY)
+            nd.ghost.x(col * CELL_SIZE)
+            nd.ghost.y(row * CELL_SIZE)
+            this.dragLayer.batchDraw()
+        }
     }
 
     private _onDragEnd(
         e: Konva.KonvaEventObject<MouseEvent | TouchEvent>,
     ): void {
-        if (this.dragLine === null || this.dragStart === null) return
-
         const pos = this.stage.getPointerPosition()
-        if (pos !== null) {
-            // Find the closest input dot within hit radius
-            const hits = this.dragLayer.find(".dot-hit")
-            for (const shape of hits) {
-                if (shape.getAttr("dotSide") !== "input") continue
-                const sx =
-                    (shape.getAttr("x") as number | undefined) ??
-                    (shape as Konva.Circle).x()
-                const sy =
-                    (shape.getAttr("y") as number | undefined) ??
-                    (shape as Konva.Circle).y()
-                const dx = pos.x - sx
-                const dy = pos.y - sy
-                if (Math.sqrt(dx * dx + dy * dy) <= DOT_HIT_RADIUS * 1.5) {
-                    const targetNodeId = shape.getAttr("dotNodeId") as string
-                    const targetDotIndex = shape.getAttr("dotIndex") as number
-                    this.callbacks.onConnect(
-                        this.dragStart.nodeId,
-                        this.dragStart.dotIndex,
-                        targetNodeId,
-                        targetDotIndex,
-                    )
-                    break
+
+        // --- Connection drag end ---
+        if (this.dragLine !== null && this.dragStart !== null) {
+            if (pos !== null) {
+                const hits = this.dragLayer.find(".dot-hit")
+                for (const shape of hits) {
+                    if (shape.getAttr("dotSide") !== "input") continue
+                    const sx =
+                        (shape.getAttr("x") as number | undefined) ??
+                        (shape as Konva.Circle).x()
+                    const sy =
+                        (shape.getAttr("y") as number | undefined) ??
+                        (shape as Konva.Circle).y()
+                    const dx = pos.x - sx
+                    const dy = pos.y - sy
+                    if (Math.sqrt(dx * dx + dy * dy) <= DOT_HIT_RADIUS * 1.5) {
+                        const targetNodeId = shape.getAttr("dotNodeId") as string
+                        const targetDotIndex = shape.getAttr("dotIndex") as number
+                        this.callbacks.onConnect(
+                            this.dragStart.nodeId,
+                            this.dragStart.dotIndex,
+                            targetNodeId,
+                            targetDotIndex,
+                        )
+                        break
+                    }
                 }
             }
+            this.dragLine.destroy()
+            this.dragLine = null
+            this.dragStart = null
+            this.dragLayer.batchDraw()
+            return
         }
 
-        this.dragLine.destroy()
-        this.dragLine = null
-        this.dragStart = null
-        this.dragLayer.batchDraw()
+        // --- Node drag end ---
+        if (this.nodeDrag !== null) {
+            const nd = this.nodeDrag
+            if (nd.active && pos !== null) {
+                const col = this._snapCol(pos.x - nd.offsetX)
+                const row = this._snapRow(pos.y - nd.offsetY)
+                this.callbacks.onMoveNode(nd.nodeId, col, row)
+            }
+            nd.ghost.destroy()
+            this.nodeDrag = null
+            this.dragLayer.batchDraw()
+        }
     }
 
     private _bindDrop(): void {

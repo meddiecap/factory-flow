@@ -3,7 +3,7 @@ import { onMounted, onUnmounted, watch, ref } from 'vue'
 import { CanvasRenderer, GRID_COLS, GRID_ROWS, CELL_SIZE } from './canvas/CanvasRenderer'
 import { CanvasInteraction } from './canvas/CanvasInteraction'
 import { NodeType } from './simulation/types'
-import { gameState, placeNode, addConnection } from './simulation/useGameState'
+import { gameState, placeNode, addConnection, moveNode } from './simulation/useGameState'
 import { tick, checkWin } from './simulation/simulator'
 import { tickMarket } from './simulation/economy'
 import { saveState, loadState, clearState } from './simulation/persistence'
@@ -71,6 +71,10 @@ onMounted(() => {
     },
     onDropNode(type, col, row) {
       placeNode(type as NodeType, col, row)
+      refresh()
+    },
+    onMoveNode(nodeId, col, row) {
+      moveNode(nodeId, col, row)
       refresh()
     },
   })
