@@ -78,6 +78,9 @@ export function tickConnections(
 
         outBuf.amount -= transfer
         inBuf.amount += transfer
+        // Keep the target buffer's resource type in sync so downstream logic
+        // (Market pricing, DetailPanel display) always sees the correct resource.
+        inBuf.resource = outBuf.resource
 
         events.push({
             connectionId: conn.id,

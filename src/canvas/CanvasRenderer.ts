@@ -4,6 +4,7 @@ import { NodeType, ResourceType } from "../simulation/types"
 import type { GameState, NodeInstance, Connection } from "../simulation/types"
 import type { TransferEvent } from "../simulation/connections"
 import { effectiveFuelPerTick } from "../simulation/tick"
+import { calcNodeSpeedFactors } from "../simulation/energy"
 
 /** Width and height of one grid cell in pixels. */
 const CELL_SIZE = 32
@@ -220,6 +221,7 @@ function drawNode(
     layer: Konva.Layer,
     node: NodeInstance,
     energyOutputCount = 0,
+    speedFactor = 1.0,
 ): void {
     const def = NODE_DEFS[node.type]
     const x = colToPx(node.position.col)
@@ -298,6 +300,28 @@ function drawNode(
                 fontSize: 9,
                 fontFamily: "monospace",
                 fill: ENERGY_DOT_COLOR,
+                align: "center",
+            }),
+        )
+
+        // Speed percentage and production rate.
+        const speedPct = Math.round(speedFactor * 100)
+        const speedMultiplier = 1.5 ** node.speedUpgradeLevel
+        const primaryOutput = def.outputs[0]
+        const ratePerSec = primaryOutput
+            ? (primaryOutput.amount * speedFactor * speedMultiplier / def.cycleDuration) * 20
+            : 0
+        const statsColor =
+            speedFactor === 0 ? "#f87171" : speedFactor < 1 ? "#fbbf24" : "#9ca3af"
+        layer.add(
+            new Konva.Text({
+                x: x + 4,
+                y: y + 30,
+                width: w - 8,
+                text: `${speedPct}% · ${ratePerSec.toFixed(2)}/s`,
+                fontSize: 9,
+                fontFamily: "monospace",
+                fill: statsColor,
                 align: "center",
             }),
         )
@@ -682,6 +706,8 @@ export class CanvasRenderer {
 
         drawConnections(this.connectionLayer, state.connections, nodeMap)
 
+        const speedFactors = calcNodeSpeedFactors(state.nodes, state.connections, NODE_DEFS)
+
         for (const node of state.nodes) {
             // For EnergySupply: count how many energy connections it currently has.
             const energyOutputCount =
@@ -690,7 +716,8 @@ export class CanvasRenderer {
                           (c) => c.isEnergy && c.fromNodeId === node.id,
                       ).length
                     : 0
-            drawNode(this.nodeLayer, node, energyOutputCount)
+            const speedFactor = speedFactors.get(node.id) ?? 1.0
+            drawNode(this.nodeLayer, node, energyOutputCount, speedFactor)
         }
 
         // Kill particles for connections that no longer exist.

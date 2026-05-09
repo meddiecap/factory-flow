@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { NodeType } from '../simulation/types'
 import type { NodeInstance } from '../simulation/types'
-import { NODE_DEFS } from '../simulation/recipes'
+import { NODE_DEFS, MARKET_PRICES } from '../simulation/recipes'
 import { upgradeCost } from '../simulation/economy'
 import { applyUpgrade } from '../simulation/upgrades'
 import type { UpgradeType } from '../simulation/upgrades'
@@ -128,6 +128,29 @@ function fillPct(amount: number, capacity: number): string {
     return Math.round((amount / capacity) * 100) + '%'
 }
 
+/**
+ * For each Market input slot, returns the estimated max €/s based on the
+ * capacity of the connected line and the sell price of the resource.
+ * Returns null for unconnected slots.
+ */
+const marketSlotRevenues = computed<Array<number | null>>(() => {
+    if (!node.value || node.value.type !== NodeType.Market) return []
+    return node.value.inputBuffers.map((_, i) => {
+        const conn = gameState.connections.find(
+            (c) => !c.isEnergy && c.toNodeId === node.value!.id && c.toDotIndex === i,
+        )
+        if (!conn) return null
+        const srcNode = gameState.nodes.find((n) => n.id === conn.fromNodeId)
+        if (!srcNode) return null
+        const outBuf = srcNode.outputBuffers[conn.fromDotIndex]
+        if (!outBuf) return null
+        const capacity = 10 + conn.capacityUpgradeLevel * 10 // units/tick
+        const sellRate = Math.min(capacity, 20) // Market sells up to 20 u/tick per slot
+        const price = MARKET_PRICES[outBuf.resource] ?? 0
+        return sellRate * price * 20 // × 20 ticks/s
+    })
+})
+
 /** Colour class for a buffer bar based on fill level. */
 function bufferColour(amount: number, capacity: number): string {
     const r = capacity > 0 ? amount / capacity : 0
@@ -178,6 +201,14 @@ function bufferColour(amount: number, capacity: number): string {
                 <div class="mt-0.5 h-1.5 w-full overflow-hidden rounded bg-gray-700">
                     <div class="h-full transition-all" :class="bufferColour(buf.amount, buf.capacity)"
                         :style="{ width: fillPct(buf.amount, buf.capacity) }" />
+                </div>
+                <!-- Market: show estimated revenue per second for this slot -->
+                <div v-if="isMarket" class="mt-0.5 flex justify-between text-[10px]">
+                    <span class="text-gray-500">Est. revenue</span>
+                    <span v-if="marketSlotRevenues[i] !== null" class="text-yellow-400 tabular-nums">
+                        €{{ marketSlotRevenues[i]?.toLocaleString() }} /s
+                    </span>
+                    <span v-else class="text-gray-600">—</span>
                 </div>
             </div>
         </div>
