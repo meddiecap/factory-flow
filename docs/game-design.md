@@ -271,7 +271,7 @@ Er is geen maximumniveau; upgrades schalen altijd door, maar het rendement daalt
 
 ### 7.1 Startpositie en progressie
 
-De speler begint met alleen de **IJzermijn**. Elke volgende fabriek wordt vrijgespeeld door voldoende geld te verdienen:
+De speler begint met een **gratis IJzermijn en een gratis Energy Supply** (beide vooraf geplaatst). Elke volgende fabriek wordt vrijgespeeld door voldoende geld te verdienen:
 
 | Volgorde | Fabriek / Node                                             | Vrijspelen bij totaal verdiend |
 | -------- | ---------------------------------------------------------- | ------------------------------ |
@@ -378,7 +378,12 @@ Een aparte uitdagingsmodus met een tijdslimiet per run. Geen effect op het hoofd
 
 ### 13.1 Fractionele cycle-voortgang
 
-Elke node houdt een `progress: number` (float 0.0–N) bij die elke tick met `snelheidsfactor` wordt opgehoogd. Zodra `progress ≥ cyclusduur`, wordt één productiecyclus afgerond en wordt `progress` met `cyclusduur` verminderd. Buffers en inputs worden pas aangesproken op het moment dat de cyclus start (inputs) en eindigt (output).
+Elke node houdt een `progress: number` (float 0.0–N) bij die elke tick met `snelheidsfactor` wordt opgehoogd. Zodra `progress ≥ cyclusduur`, wordt één productiecyclus afgerond:
+
+1. **Cyclus-start check**: vóór de start controleert de node of de invoerbuffer voldoende eenheden bevat voor de volledige cyclus. Zo niet, wacht de node (status: `waiting`) zonder `progress` op te hogen.
+2. **Inputs aftrekken**: bij cyclus-start worden de benodigde inputs direct uit de invoerbuffer afgetrokken.
+3. **Output toevoegen**: bij cyclus-einde worden de outputs aan de uitvoerbuffer toegevoegd (mits buffer niet vol; anders stopt de cyclus en worden reeds afgetrokken inputs niet teruggegeven — de cyclus is afgerond, de output wacht intern).
+4. `progress` wordt met `cyclusduur` verminderd (zodat overloop in de volgende cyclus doorloopt).
 
 ## 14. Implementatieaanbevelingen
 
