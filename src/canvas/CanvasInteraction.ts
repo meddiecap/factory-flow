@@ -72,7 +72,9 @@ function energyOutputDotPos(
 /** Pixel position of an input dot, accounting for any energy input dot in the spacing. */
 function inputDotPos(node: NodeInstance, dotIndex: number): [number, number] {
     const def = NODE_DEFS[node.type]
-    const total = def.hasEnergyInput ? def.inputs.length + 1 : def.inputs.length
+    const total = def.hasEnergyInput
+        ? node.inputBuffers.length + 1
+        : node.inputBuffers.length
     return [
         colToPx(node.position.col),
         dotY(node.position.row, dotIndex, total, def.gridSize.height),
@@ -82,10 +84,15 @@ function inputDotPos(node: NodeInstance, dotIndex: number): [number, number] {
 /** Pixel position of the energy input dot on a production factory. */
 function energyInputDotPos(node: NodeInstance): [number, number] {
     const def = NODE_DEFS[node.type]
-    const total = def.inputs.length + 1 // recipe inputs + energy
+    const total = node.inputBuffers.length + 1 // recipe inputs + energy
     return [
         colToPx(node.position.col),
-        dotY(node.position.row, def.inputs.length, total, def.gridSize.height),
+        dotY(
+            node.position.row,
+            node.inputBuffers.length,
+            total,
+            def.gridSize.height,
+        ),
     ]
 }
 
@@ -333,7 +340,8 @@ export class CanvasInteraction {
             }
 
             // Recipe input dots — also interactive for reconnect/remove
-            for (let i = 0; i < def.inputs.length; i++) {
+            // Use node.inputBuffers.length so Market sales-point upgrades get hit areas.
+            for (let i = 0; i < node.inputBuffers.length; i++) {
                 const [x, y] = inputDotPos(node, i)
                 const circle = new Konva.Circle({
                     name: "dot-hit",

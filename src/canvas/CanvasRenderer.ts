@@ -294,7 +294,7 @@ function drawNode(
                 x: x + 4,
                 y: y + 19,
                 width: w - 8,
-                text: `⚡ ${fuelVal.toFixed(1)} /tick`,
+                text: `⚡ ${fuelVal.toFixed(2)} /tick`,
                 fontSize: 9,
                 fontFamily: "monospace",
                 fill: ENERGY_DOT_COLOR,
@@ -321,7 +321,9 @@ function drawNode(
     }
 
     // Input dots (left edge)
-    const inputCount = def.inputs.length
+    // Use node.inputBuffers.length (not def.inputs.length) so that dynamic inputs
+    // such as Market sales-point upgrades are reflected in the rendered dot count.
+    const inputCount = node.inputBuffers.length
     // When the node has an energy input dot, include it in the spacing calculation
     // so all dots (recipe + energy) are evenly distributed in the node height.
     const totalInputDots = def.hasEnergyInput ? inputCount + 1 : inputCount
@@ -541,7 +543,9 @@ function energyOutputDotPos(
  */
 function inputDotPos(node: NodeInstance, dotIndex: number): [number, number] {
     const def = NODE_DEFS[node.type]
-    const total = def.hasEnergyInput ? def.inputs.length + 1 : def.inputs.length
+    const total = def.hasEnergyInput
+        ? node.inputBuffers.length + 1
+        : node.inputBuffers.length
     const x = colToPx(node.position.col)
     const y = dotY(node.position.row, dotIndex, total, def.gridSize.height)
     return [x, y]

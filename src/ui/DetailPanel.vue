@@ -170,7 +170,7 @@ function bufferColour(amount: number, capacity: number): string {
         <!-- Input buffers -->
         <div v-if="node.inputBuffers.length > 0">
             <p class="mb-1 text-gray-400">Input buffers</p>
-            <div v-for="buf in node.inputBuffers" :key="buf.resource" class="mb-1.5">
+            <div v-for="(buf, i) in node.inputBuffers" :key="i" class="mb-1.5">
                 <div class="flex justify-between">
                     <span>{{ buf.resource }}</span>
                     <span class="tabular-nums text-gray-400">{{ buf.amount }}/{{ buf.capacity }}</span>
@@ -185,7 +185,7 @@ function bufferColour(amount: number, capacity: number): string {
         <!-- Output buffers -->
         <div v-if="node.outputBuffers.length > 0">
             <p class="mb-1 text-gray-400">Output buffers</p>
-            <div v-for="buf in node.outputBuffers" :key="buf.resource" class="mb-1.5">
+            <div v-for="(buf, i) in node.outputBuffers" :key="i" class="mb-1.5">
                 <div class="flex justify-between">
                     <span>{{ buf.resource }}</span>
                     <span class="tabular-nums text-gray-400">{{ buf.amount }}/{{ buf.capacity }}</span>
