@@ -42,7 +42,7 @@ Elke node is een rechthoekig venster op het canvas met:
 ### 3.2 Verbindingen
 
 - Lijnen worden gesleept van een **output-dot naar een input-dot**
-- Conventiionele richting: **links → rechts**
+- Conventionele richting: **links → rechts**
 - Lijnen hebben een **maximale doorvoercapaciteit** (upgradebaar)
 - Kleurcodering van lijnen geeft doorvoerstatus aan:
     - Groen: optimale flow
@@ -148,12 +148,9 @@ Upgrades zijn per-node beschikbaar en kosten geld:
 
 ## 8. Progressie & Prestige
 
-### 8.1 Eindproduct per run
+### 8.1 Eindproduct
 
-Elke run heeft een specifiek eindproduct als doel. Het bereiken ervan voltooit de run en triggert het prestige-systeem.
-
-**Run 1 — Raket**
-De raket is het eerste en centrale einddoel. De productieketen:
+Het einddoel van het spel is de **Raket**. De productieketen:
 
 | Stap           | Invoer                                               | Uitvoer                           |
 | -------------- | ---------------------------------------------------- | --------------------------------- |
