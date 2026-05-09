@@ -95,12 +95,12 @@ describe("reachability", () => {
 
         //
         // ── Engine supply chain ───────────────────────────────────────────────────────
-        // IronMine + CoalMine → Smelter → EngineFactory (+ Fuel via connection) → Assembly
+        // IronMine + CoalMine → Smelter → EngineFactory (+ CoalMine via connection) → Assembly
         //
         const ironMineB = makeNode(NodeType.IronMine)
         const coalMineB = makeNode(NodeType.CoalMine)
         const smelterB = makeNode(NodeType.Smelter)
-        const fuelSrc = makeNode(NodeType.EnergySupply, 600) // recipe fuel via connection
+        const coalMineC = makeNode(NodeType.CoalMine) // recipe coal for EngineFactory
         const engineFactory = makeNode(NodeType.EngineFactory)
 
         //
@@ -132,7 +132,7 @@ describe("reachability", () => {
             makeConn(ironMineB, 0, smelterB, 0), // IronOre → Smelter      input[0]
             makeConn(coalMineB, 0, smelterB, 1), // Coal    → Smelter      input[1]
             makeConn(smelterB, 0, engineFactory, 0), // Steel   → EngineFactory input[0]
-            makeConn(fuelSrc, 0, engineFactory, 1), // Fuel    → EngineFactory input[1]
+            makeConn(coalMineC, 0, engineFactory, 1), // Coal    → EngineFactory input[1]
             makeConn(engineFactory, 0, assembly, 3), // Thrusters → Assembly   input[3]
 
             // Electronics chain
@@ -152,7 +152,7 @@ describe("reachability", () => {
             ironMineB,
             coalMineB,
             smelterB,
-            fuelSrc,
+            coalMineC,
             engineFactory,
             copperMine,
             siliconMine,

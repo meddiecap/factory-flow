@@ -141,13 +141,11 @@ export const NODE_DEFS: Record<NodeType, NodeDef> = {
         displayName: "Engine Factory",
         inputs: [
             { resource: ResourceType.Steel, amount: 4 },
-            // Fuel as recipe input (separate from the global energy pool consumption).
-            { resource: ResourceType.Fuel, amount: 2 },
+            { resource: ResourceType.Coal, amount: 2 },
         ],
         outputs: [{ resource: ResourceType.Thrusters, amount: 1 }],
         cycleDuration: 160,
         buildCost: 15000,
-        // 2/tick from the global energy pool (recipe fuel is additional, handled via connection).
         fuelPerTick: 2,
         gridSize: { width: 4, height: 4 },
         defaultInputCapacity: 10,
