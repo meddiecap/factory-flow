@@ -313,7 +313,8 @@ export function addConnection(
 ): boolean {
     if (fromNodeId === toNodeId) return false
 
-    if (wouldCreateCycle(fromNodeId, toNodeId, gameState.connections)) return false
+    if (wouldCreateCycle(fromNodeId, toNodeId, gameState.connections))
+        return false
 
     // Check one-line-per-dot rule
     const alreadyUsed = gameState.connections.some(

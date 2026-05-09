@@ -59,10 +59,7 @@ function makeConnection(
 }
 
 /** Resets gameState nodes and connections to the provided fixtures. */
-function setup(
-    nodes: NodeInstance[],
-    connections: Connection[],
-): void {
+function setup(nodes: NodeInstance[], connections: Connection[]): void {
     gameState.nodes.splice(0, Infinity, ...nodes)
     gameState.connections.splice(0, Infinity, ...connections)
 }
@@ -135,10 +132,7 @@ describe("connectionAtDot", () => {
 
 describe("addConnection cycle detection", () => {
     beforeEach(() => {
-        setup(
-            [makeNode("n1"), makeNode("n2"), makeNode("n3")],
-            [],
-        )
+        setup([makeNode("n1"), makeNode("n2"), makeNode("n3")], [])
     })
 
     it("rejects a self-loop", () => {
@@ -206,9 +200,9 @@ describe("reconnectConnection", () => {
         const ok = reconnectConnection("c2", "n1", 0, "n2", 0)
         expect(ok).toBe(false)
         // Original connection is unchanged
-        expect(gameState.connections.find((c) => c.id === "c2")!.fromNodeId).toBe(
-            "n3",
-        )
+        expect(
+            gameState.connections.find((c) => c.id === "c2")!.fromNodeId,
+        ).toBe("n3")
     })
 
     it("rejects when the target dot is already occupied by another connection", () => {

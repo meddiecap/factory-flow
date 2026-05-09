@@ -1,5 +1,6 @@
 import Konva from "konva"
 import { NODE_DEFS } from "../simulation/recipes"
+import { NodeType } from "../simulation/types"
 import type { GameState, NodeInstance, Connection } from "../simulation/types"
 
 /** Width and height of one grid cell in pixels. */
@@ -137,8 +138,21 @@ function drawGrid(layer: Konva.Layer): void {
     }
 }
 
+/** Bar height in pixels for the cycle-progress bar rendered on production nodes. */
+const PROGRESS_BAR_HEIGHT = 4
+
+/** Status-to-colour mapping for the progress bar. */
+const STATUS_COLORS: Record<string, string> = {
+    active: "#22c55e",       // green-500
+    waiting: "#f97316",      // orange-500
+    "output-blocked": "#ef4444", // red-500
+    idle: "#6b7280",         // gray-500
+}
+
 /**
- * Draws a single node as a rectangle with label and input/output dots.
+ * Draws a single node as a rectangle with label, input/output dots and a status bar.
+ * Production nodes show a cycle-progress bar; Splitter shows its ratio; Warehouse
+ * shows its buffer fill fraction.
  *
  * @param layer - The Konva layer to draw onto.
  * @param node - Runtime node instance with position data.
@@ -206,6 +220,89 @@ function drawNode(layer: Konva.Layer, node: NodeInstance): void {
                 strokeWidth: 1,
             }),
         )
+    }
+
+    // ---- Status indicator (bottom of node body) ----
+    const MARGIN = 4
+    const barW = w - MARGIN * 2
+    const barX = x + MARGIN
+    const barY = y + h - MARGIN - PROGRESS_BAR_HEIGHT
+
+    if (node.type === NodeType.Splitter) {
+        // Show split ratio as "XX / YY" text
+        const ratioA = node.splitterRatioA ?? 0.5
+        const pctA = Math.round(ratioA * 100)
+        const pctB = 100 - pctA
+        layer.add(
+            new Konva.Text({
+                x: barX,
+                y: barY - 2,
+                width: barW,
+                text: `${pctA} / ${pctB}`,
+                fontSize: 9,
+                fontFamily: "monospace",
+                fill: "#9ca3af",
+                align: "center",
+            }),
+        )
+    } else if (node.type === NodeType.Warehouse) {
+        // Show buffer fill bar
+        const buf = node.inputBuffers[0]
+        if (buf !== undefined && buf.capacity > 0) {
+            const fill = Math.min(buf.amount / buf.capacity, 1)
+            // Background track
+            layer.add(
+                new Konva.Rect({
+                    x: barX,
+                    y: barY,
+                    width: barW,
+                    height: PROGRESS_BAR_HEIGHT,
+                    fill: "#374151",
+                    cornerRadius: 2,
+                }),
+            )
+            // Fill
+            if (fill > 0) {
+                layer.add(
+                    new Konva.Rect({
+                        x: barX,
+                        y: barY,
+                        width: Math.round(barW * fill),
+                        height: PROGRESS_BAR_HEIGHT,
+                        fill: "#60a5fa",
+                        cornerRadius: 2,
+                    }),
+                )
+            }
+        }
+    } else if (def.cycleDuration > 0) {
+        // Show cycle progress bar
+        const fill = Math.min(node.progress / def.cycleDuration, 1)
+        const color = STATUS_COLORS[node.status] ?? STATUS_COLORS["idle"]!
+        // Background track
+        layer.add(
+            new Konva.Rect({
+                x: barX,
+                y: barY,
+                width: barW,
+                height: PROGRESS_BAR_HEIGHT,
+                fill: "#374151",
+                cornerRadius: 2,
+            }),
+        )
+        // Fill
+        if (fill > 0) {
+            layer.add(
+                new Konva.Rect({
+                    x: barX,
+                    y: barY,
+                    width: Math.round(barW * fill),
+                    height: PROGRESS_BAR_HEIGHT,
+                    fill: color,
+                    cornerRadius: 2,
+                }),
+            )
+        }
     }
 }
 

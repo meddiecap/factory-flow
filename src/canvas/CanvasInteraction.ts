@@ -427,7 +427,10 @@ export class CanvasInteraction {
                             (n) => n.id === rd.originalToNodeId,
                         )
                         if (toNode !== undefined) {
-                            ;[ax, ay] = inputDotPos(toNode, rd.originalToDotIndex)
+                            ;[ax, ay] = inputDotPos(
+                                toNode,
+                                rd.originalToDotIndex,
+                            )
                         }
                     } else {
                         // Grabbed the input end; fixed end is the output.
