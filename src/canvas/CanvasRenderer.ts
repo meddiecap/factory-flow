@@ -202,7 +202,7 @@ function _upgradeText(node: NodeInstance): string | null {
         case NodeType.Market:
             return `${node.salesPoints ?? 1} / — / —`
         case NodeType.EnergySupply:
-            return `${s} / ${b} / —`
+            return `⚡ Lv${node.energyOutputUpgradeLevel}`
         default:
             return `${s} / ${b} / ${e}`
     }
@@ -259,12 +259,14 @@ function drawNode(
 
     // Energy Supply stats – output rate and connected factory count.
     if (node.type === NodeType.EnergySupply) {
+        const effectiveOutput =
+            (def.energyOutputPerTick ?? 1) + node.energyOutputUpgradeLevel
         layer.add(
             new Konva.Text({
                 x: x + 4,
                 y: y + 19,
                 width: w - 8,
-                text: `⚡ ${def.energyOutputPerTick!.toFixed(1)} /tick`,
+                text: `⚡ ${effectiveOutput.toFixed(1)} /tick`,
                 fontSize: 9,
                 fontFamily: "monospace",
                 fill: ENERGY_DOT_COLOR,

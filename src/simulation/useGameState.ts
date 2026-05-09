@@ -110,6 +110,7 @@ function createNodeInstance(
         bufferUpgradeLevel: 0,
         efficiencyUpgradeLevel: 0,
         energyEfficiencyUpgradeLevel: 0,
+        energyOutputUpgradeLevel: 0,
         salesPoints: type === NodeType.Market ? 1 : undefined,
         splitterAccumulators: type === NodeType.Splitter ? [0, 0] : undefined,
         splitterRatioA: type === NodeType.Splitter ? 0.5 : undefined,

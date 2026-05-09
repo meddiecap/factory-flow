@@ -175,6 +175,8 @@ export interface NodeInstance {
     efficiencyUpgradeLevel: number
     /** Energy efficiency upgrade level; reduces fuelPerTick by 10% per level (min 50%). */
     energyEfficiencyUpgradeLevel: number
+    /** Energy output upgrade level (EnergySupply only); each level adds +1.0 energyOutputPerTick. */
+    energyOutputUpgradeLevel: number
     /**
      * Number of active sales points (Market only).
      * Starts at 1; each Verkooppunten upgrade adds 1.

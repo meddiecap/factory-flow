@@ -13,6 +13,7 @@ export type UpgradeType =
     | "efficiency"
     | "energyEfficiency"
     | "salesPoint"
+    | "energyOutput"
 
 /**
  * Applies one upgrade level to a node, deducting the cost from the game state.
@@ -89,6 +90,16 @@ export function applyUpgrade(
                 capacity: 20,
             })
             node.salesPoints = pts + 1
+            return true
+        }
+
+        case "energyOutput": {
+            // Only applicable to EnergySupply nodes.
+            if (def.energyOutputPerTick === undefined) return false
+            const cost = upgradeCost(def.buildCost, node.energyOutputUpgradeLevel)
+            if (state.money < cost) return false
+            state.money -= cost
+            node.energyOutputUpgradeLevel++
             return true
         }
     }

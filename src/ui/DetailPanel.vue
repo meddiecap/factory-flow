@@ -46,10 +46,10 @@ const statusClass = computed(() => {
 
 // ── Upgrade availability ─────────────────────────────────────────────────────
 
-/** Whether this node type can use the Speed upgrade (non-utility production nodes). */
+/** Whether this node type can use the Speed upgrade (non-utility production nodes, not EnergySupply). */
 const hasSpeedUpgrade = computed(() => {
     if (!node.value) return false
-    const noSpeed: NodeType[] = [NodeType.Splitter, NodeType.Warehouse, NodeType.Market]
+    const noSpeed: NodeType[] = [NodeType.Splitter, NodeType.Warehouse, NodeType.Market, NodeType.EnergySupply]
     return !noSpeed.includes(node.value.type)
 })
 
@@ -65,6 +65,16 @@ const hasEnergyEfficiencyUpgrade = computed(
 
 /** Whether this is a Market node (sales-points upgrade). */
 const isMarket = computed(() => node.value?.type === NodeType.Market)
+
+/** Whether this is an Energy Supply node (energy output upgrade). */
+const isEnergySupply = computed(() => node.value?.type === NodeType.EnergySupply)
+
+/** Cost of the next Energy Output upgrade (EnergySupply only): €150 × 2^level. */
+const energyOutputUpgradeCost = computed(() =>
+    node.value && def.value
+        ? upgradeCost(def.value.buildCost, node.value.energyOutputUpgradeLevel)
+        : 0,
+)
 
 /** Cost of the next speed upgrade level for the selected node. */
 const speedUpgradeCost = computed(() =>
@@ -247,8 +257,8 @@ function bufferColour(amount: number, capacity: number): string {
                 </button>
             </div>
 
-            <!-- Buffer upgrade -->
-            <div class="mb-1.5 flex items-center justify-between gap-2">
+            <!-- Buffer upgrade (not for EnergySupply: it has no buffers) -->
+            <div v-if="!isEnergySupply" class="mb-1.5 flex items-center justify-between gap-2">
                 <div>
                     <span>Buffer</span>
                     <span class="ml-1 text-gray-500">Lv{{ node.bufferUpgradeLevel }}</span>
@@ -290,6 +300,22 @@ function bufferColour(amount: number, capacity: number): string {
                     " :disabled="!canAfford(energyEfficiencyUpgradeCost)"
                     title="Reduce fuel consumption (−10% per level, min 50%)" @click="buyUpgrade('energyEfficiency')">
                     €{{ energyEfficiencyUpgradeCost }}
+                </button>
+            </div>
+
+            <!-- Energy Supply: energy output upgrade -->
+            <div v-if="isEnergySupply" class="mb-1.5 flex items-center justify-between gap-2">
+                <div>
+                    <span>Energy Output</span>
+                    <span class="ml-1 text-gray-500">+{{ node.energyOutputUpgradeLevel }} ⚡/tick</span>
+                </div>
+                <button class="rounded px-2 py-0.5 font-medium transition-colors" :class="canAfford(energyOutputUpgradeCost)
+                    ? 'bg-yellow-600 hover:bg-yellow-500 text-white cursor-pointer'
+                    : 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-60'
+                    " :disabled="!canAfford(energyOutputUpgradeCost)"
+                    title="Increase energy output by +1.0 per tick"
+                    @click="buyUpgrade('energyOutput')">
+                    €{{ energyOutputUpgradeCost }}
                 </button>
             </div>
 

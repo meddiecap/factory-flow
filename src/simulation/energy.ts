@@ -52,7 +52,8 @@ export function calcNodeSpeedFactors(
         }
 
         const supplyDef = defs[supply.type]
-        const energyOutputPerTick = supplyDef?.energyOutputPerTick ?? 0
+        const energyOutputPerTick =
+            (supplyDef?.energyOutputPerTick ?? 0) + (supply.energyOutputUpgradeLevel ?? 0)
 
         // Count how many factories this supply is feeding.
         const connectedCount = energyConns.filter(
