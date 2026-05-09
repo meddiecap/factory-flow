@@ -41,6 +41,7 @@ De speler moet bestaande verbindingen (lijnen) kunnen verwijderen of een eindpun
 - Klik en sleep een **bezette invoer-dot of uitvoer-dot** om de verbinding los te koppelen
 - Sleep naar een andere geldige dot en laat los om opnieuw te verbinden
 - Loslaten op een ongeldige plek (bezette dot, of een kringverbinding) annuleert de actie en herstelt de originele verbinding
+    - Een **kringverbinding** is: een cyclus in de dataflow (bijv. A→B→C→A), óf een node die verbonden wordt met zichzelf
 - Herverbinden is mogelijk vanuit **zowel de output-dot als de input-dot**
 - Verplaatsen is **niet** beschikbaar via het detailpanel
 
@@ -103,6 +104,8 @@ Formaat: `[Snelheid] / [Buffer] / [Energie-eff.]` als cijfers, bijv.:
 | Splitter              | —             | —         | —            |
 | Opslagpakhuis         | —             | Buffer    | —            |
 
+> Voor de Splitter (alle posities `—`) wordt de upgradeweergave **niet** gerenderd op de node; de ruimte blijft leeg. Voor andere nodes met één of twee streepjes worden die posities **letterlijk als `—`** weergegeven, bijv. `1 / —` of `— / 2 / —`.
+
 > Efficiëntie (input-reductie) en Lijnkapaciteit staan niet in dit overzicht omdat ze minder frequent worden geüpgraded en beter uitgelegd worden in het detailpanel.
 
 ### Beslissingen
@@ -120,8 +123,8 @@ Wanneer goederen van de ene node naar de andere worden getransporteerd, verschij
 
 ### Gedrag
 
-- Elke tick waarop daadwerkelijk goederen worden getransporteerd: **één bolletje** spawnt op de output-dot van de bronnode als visuele indicator
-- Het bolletje animeert langs de lijn naar de input-dot van de doelnode in een vaste animatieduur (bijv. 0,5 seconde, ongeacht ticksnelheid)
+- Elke tick waarop daadwerkelijk goederen worden getransporteerd spawnt er **één bolletje per getransporteerde eenheid** op de output-dot van de bronnode; er kunnen dus meerdere bolletjes tegelijk op dezelfde lijn in transit zijn
+- De animatieduur is een vaste **0,5 seconde** per bolletje, ongeacht de ticksnelheid
 - Het bolletje heeft de **kleur van de resource** die wordt getransporteerd
 - Wordt de verbinding verwijderd terwijl een bolletje in transit is: het bolletje verdwijnt onmiddellijk
 - Lijnbreedte en boljetaantal schalen **niet** mee met de lijnkapaciteit; dit wordt later opnieuw beoordeeld als het in de praktijk visueel druk blijkt
@@ -221,6 +224,23 @@ De snelheidsmultiplier (globale energiepool, sectie 5.3 game-design.md) wordt be
 - Overtollige productie boven de buffergrootte wordt afgedankt zonder effect
 - Dit geldt **uitsluitend** voor de Energy Supply; alle andere nodes stoppen nog bij een volle uitvoerbuffer
 - De speler is hierdoor niet verplicht een verbinding of Markt aan te leggen voor de Energy Supply, maar doet het wel als hij de snelheidsmultiplier wil benutten
+
+---
+
+## Implementatievolgorde
+
+De aanbevolen volgorde van implementatie, van minste naar meeste afhankelijkheden:
+
+| Stap | Verbetering                                   | Reden                                                                     |
+| ---- | --------------------------------------------- | ------------------------------------------------------------------------- |
+| 1    | **8** – Energy Supply overflow                | Pure simulatielogica, geen UI-afhankelijkheden                            |
+| 2    | **7** – Bouwkosten                            | Pure economielogica, geen UI-afhankelijkheden                             |
+| 3    | **6** – Grid-resolutie                        | Fundamentele visuele wijziging; noodzakelijk vóór verbeteringen 3, 4 en 5 |
+| 4    | **1** – Nodes slepen                          | Canvas-interactie; bouwt op het nieuwe grid                               |
+| 5    | **2** – Verbindingen verwijderen/herverbinden | Canvas-interactie; logisch aansluitend op node-slepen                     |
+| 6    | **3** – Voortgangsbalk                        | Visueel; profiteert van de grotere nodes uit stap 3                       |
+| 7    | **4** – Upgrade-niveau weergave               | Visueel; profiteert van de grotere nodes uit stap 3                       |
+| 8    | **5** – Animerende bolletjes                  | Meest complexe animatielogica; als laatste zodat de rest al stabiel is    |
 
 ---
 
