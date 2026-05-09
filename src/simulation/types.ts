@@ -211,4 +211,9 @@ export interface GameState {
     totalEarned: number
     /** Number of simulation ticks elapsed since the run started. */
     tick: number
+    /**
+     * Transfer events from the most recent tick, used by the renderer to spawn
+     * particle animations. Not persisted to localStorage.
+     */
+    lastTransfers?: import("./connections").TransferEvent[]
 }

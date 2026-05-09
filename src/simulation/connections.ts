@@ -1,4 +1,4 @@
-import type { NodeInstance, Connection } from "./types"
+import type { NodeInstance, Connection, ResourceType } from "./types"
 
 /**
  * Computes the visual flow status of a connection based on how full it is.
@@ -20,6 +20,19 @@ export function connectionFlowStatus(
 }
 
 /**
+ * Describes one successful transfer event that occurred during a tick.
+ * Used by the renderer to spawn particle animations.
+ */
+export interface TransferEvent {
+    /** The connection along which goods were transferred. */
+    connectionId: string
+    /** Number of units transferred (one particle will be spawned per unit, up to a cap). */
+    amount: number
+    /** The resource type that was transferred, for colouring the particle. */
+    resource: ResourceType
+}
+
+/**
  * Moves goods along all connections for one simulation tick.
  * For each connection, up to `connection.capacity` units are transferred from the source
  * node's output buffer to the target node's input buffer. Transfer stops when either
@@ -28,16 +41,19 @@ export function connectionFlowStatus(
  *
  * @param nodes - All node instances on the canvas, indexed by id for fast lookup.
  * @param connections - All active connections to process.
+ * @returns A list of transfer events, one per connection where goods moved.
  */
 export function tickConnections(
     nodes: NodeInstance[],
     connections: Connection[],
-): void {
+): TransferEvent[] {
     // Build a lookup map for O(1) node access.
     const nodeMap = new Map<string, NodeInstance>()
     for (const node of nodes) {
         nodeMap.set(node.id, node)
     }
+
+    const events: TransferEvent[] = []
 
     for (const conn of connections) {
         const source = nodeMap.get(conn.fromNodeId)
@@ -59,5 +75,13 @@ export function tickConnections(
 
         outBuf.amount -= transfer
         inBuf.amount += transfer
+
+        events.push({
+            connectionId: conn.id,
+            amount: transfer,
+            resource: outBuf.resource,
+        })
     }
+
+    return events
 }

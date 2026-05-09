@@ -1,7 +1,8 @@
 import Konva from "konva"
 import { NODE_DEFS } from "../simulation/recipes"
-import { NodeType } from "../simulation/types"
+import { NodeType, ResourceType } from "../simulation/types"
 import type { GameState, NodeInstance, Connection } from "../simulation/types"
+import type { TransferEvent } from "../simulation/connections"
 
 /** Width and height of one grid cell in pixels. */
 const CELL_SIZE = 32
@@ -148,6 +149,33 @@ const STATUS_COLORS: Record<string, string> = {
     "output-blocked": "#ef4444", // red-500
     idle: "#6b7280", // gray-500
 }
+
+/** Visual colours for each resource type, used for particle animations. */
+const RESOURCE_COLORS: Record<ResourceType, string> = {
+    [ResourceType.IronOre]: "#9ca3af", // gray-400
+    [ResourceType.Coal]: "#6b7280", // gray-500
+    [ResourceType.Copper]: "#f97316", // orange-500
+    [ResourceType.Silicon]: "#a78bfa", // violet-400
+    [ResourceType.Fuel]: "#facc15", // yellow-400
+    [ResourceType.Steel]: "#64748b", // slate-500
+    [ResourceType.Cables]: "#f59e0b", // amber-500
+    [ResourceType.HullParts]: "#60a5fa", // blue-400
+    [ResourceType.FuelTanks]: "#4ade80", // green-400
+    [ResourceType.Circuits]: "#34d399", // emerald-400
+    [ResourceType.ControlSystem]: "#818cf8", // indigo-400
+    [ResourceType.Thrusters]: "#fb923c", // orange-400
+    [ResourceType.Rocket]: "#f43f5e", // rose-500
+}
+
+/** Maximum particles spawned per connection per tick (caps visual load). */
+const MAX_PARTICLES_PER_TICK = 5
+
+/** Particle animation duration in milliseconds. */
+const PARTICLE_DURATION_MS = 500
+
+/** Radius of animated resource particles in pixels. */
+const PARTICLE_RADIUS = 4
+
 /**
  * Returns a compact upgrade-level string for a node, or null when no upgrades
  * are relevant for this node type (Splitter).
@@ -440,10 +468,17 @@ export class CanvasRenderer {
     private gridLayer: Konva.Layer
     private connectionLayer: Konva.Layer
     private nodeLayer: Konva.Layer
+    private particleLayer: Konva.Layer
+
+    /**
+     * Map from connectionId → array of active Konva.Circle particles.
+     * Used to destroy particles immediately when their connection is removed.
+     */
+    private _particles = new Map<string, Konva.Circle[]>()
 
     /**
      * Creates a new CanvasRenderer and attaches a Konva Stage to the given container.
-     * Sets up three rendering layers: grid, connections and nodes.
+     * Sets up four rendering layers: grid, connections, nodes, and particles.
      *
      * @param containerId - The `id` of the HTML element to mount the Konva stage inside.
      */
@@ -457,10 +492,12 @@ export class CanvasRenderer {
         this.gridLayer = new Konva.Layer()
         this.connectionLayer = new Konva.Layer()
         this.nodeLayer = new Konva.Layer()
+        this.particleLayer = new Konva.Layer()
 
         this.stage.add(this.gridLayer)
         this.stage.add(this.connectionLayer)
         this.stage.add(this.nodeLayer)
+        this.stage.add(this.particleLayer)
 
         drawGrid(this.gridLayer)
     }
@@ -469,6 +506,7 @@ export class CanvasRenderer {
      * Re-renders the connection and node layers from the current game state.
      * Clears and redraws both layers on every call; suitable for the current phase
      * where the state is small and full redraws are cheap.
+     * Active particles are NOT destroyed on re-render; they finish their animation.
      *
      * @param state - The game state snapshot to render.
      */
@@ -487,8 +525,154 @@ export class CanvasRenderer {
             drawNode(this.nodeLayer, node)
         }
 
+        // Kill particles for connections that no longer exist.
+        const liveIds = new Set(state.connections.map((c) => c.id))
+        for (const [id, circles] of this._particles) {
+            if (!liveIds.has(id)) {
+                for (const c of circles) c.destroy()
+                this._particles.delete(id)
+            }
+        }
+
         this.connectionLayer.batchDraw()
         this.nodeLayer.batchDraw()
+    }
+
+    /**
+     * Spawns animated resource particles for each transfer event from the last tick.
+     * Particles travel from the output dot of the source node to the input dot of the
+     * target node along the Manhattan route of the connection.
+     * Called once per tick after the simulation step.
+     *
+     * @param events - Transfer events returned by tickConnections.
+     * @param state - Current game state (used for node/connection lookup).
+     */
+    spawnParticles(events: TransferEvent[], state: GameState): void {
+        const nodeMap = new Map<string, NodeInstance>()
+        for (const node of state.nodes) nodeMap.set(node.id, node)
+
+        const connMap = new Map<string, Connection>()
+        for (const conn of state.connections) connMap.set(conn.id, conn)
+
+        for (const ev of events) {
+            const conn = connMap.get(ev.connectionId)
+            if (conn === undefined) continue
+
+            const src = nodeMap.get(conn.fromNodeId)
+            const tgt = nodeMap.get(conn.toNodeId)
+            if (src === undefined || tgt === undefined) continue
+
+            const [x1, y1] = outputDotPos(src, conn.fromDotIndex)
+            const [x2, y2] = inputDotPos(tgt, conn.toDotIndex)
+            const midX = x1 + (x2 - x1) / 2
+
+            // Manhattan waypoints: start → mid-x at start-y → mid-x at end-y → end
+            const waypoints: [number, number][] = [
+                [x1, y1],
+                [midX, y1],
+                [midX, y2],
+                [x2, y2],
+            ]
+
+            const color = RESOURCE_COLORS[ev.resource] ?? "#ffffff"
+            const count = Math.min(ev.amount, MAX_PARTICLES_PER_TICK)
+
+            for (let i = 0; i < count; i++) {
+                // Stagger start slightly so multiple particles don't overlap.
+                const delay = (i / count) * PARTICLE_DURATION_MS * 0.4
+                this._spawnOneParticle(ev.connectionId, waypoints, color, delay)
+            }
+        }
+    }
+
+    /**
+     * Animates a single particle along a sequence of waypoints.
+     * The particle is destroyed when the animation completes.
+     *
+     * @param connectionId - Used to register the particle for connection-removal cleanup.
+     * @param waypoints - Ordered [x, y] positions the particle traverses.
+     * @param color - Fill colour of the particle circle.
+     * @param delayMs - Milliseconds to wait before starting. Zero or positive.
+     */
+    private _spawnOneParticle(
+        connectionId: string,
+        waypoints: [number, number][],
+        color: string,
+        delayMs: number,
+    ): void {
+        const [sx, sy] = waypoints[0]!
+        const circle = new Konva.Circle({
+            x: sx,
+            y: sy,
+            radius: PARTICLE_RADIUS,
+            fill: color,
+            opacity: 0.9,
+        })
+        this.particleLayer.add(circle)
+
+        // Register for cleanup on connection removal.
+        const list = this._particles.get(connectionId) ?? []
+        list.push(circle)
+        this._particles.set(connectionId, list)
+
+        // Compute segment lengths to distribute time proportionally.
+        const segLengths: number[] = []
+        let totalLength = 0
+        for (let i = 1; i < waypoints.length; i++) {
+            const [ax, ay] = waypoints[i - 1]!
+            const [bx, by] = waypoints[i]!
+            const len = Math.sqrt((bx - ax) ** 2 + (by - ay) ** 2)
+            segLengths.push(len)
+            totalLength += len
+        }
+        if (totalLength === 0) {
+            circle.destroy()
+            return
+        }
+
+        // Build a tween per segment, chained via onFinish.
+        const segDurations = segLengths.map(
+            (l) => (l / totalLength) * (PARTICLE_DURATION_MS / 1000),
+        )
+
+        const startSegment = (segIdx: number): void => {
+            if (segIdx >= waypoints.length - 1) {
+                // Animation complete — remove from tracking and destroy.
+                const arr = this._particles.get(connectionId)
+                if (arr !== undefined) {
+                    const idx = arr.indexOf(circle)
+                    if (idx !== -1) arr.splice(idx, 1)
+                }
+                circle.destroy()
+                this.particleLayer.batchDraw()
+                return
+            }
+
+            const [ex, ey] = waypoints[segIdx + 1]!
+            const dur = segDurations[segIdx] ?? 0.05
+
+            new Konva.Tween({
+                node: circle,
+                x: ex,
+                y: ey,
+                duration: Math.max(dur, 0.01),
+                easing: Konva.Easings.Linear,
+                onFinish: () => startSegment(segIdx + 1),
+            }).play()
+        }
+
+        if (delayMs > 0) {
+            setTimeout(() => {
+                // Guard against the circle already being destroyed (connection removed).
+                if (!circle.isVisible()) return
+                startSegment(0)
+                this.particleLayer.batchDraw()
+            }, delayMs)
+        } else {
+            startSegment(0)
+        }
+
+        this.particleLayer.batchDraw()
     }
 
     /**

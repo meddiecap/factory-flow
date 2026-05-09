@@ -25,7 +25,7 @@ export function tick(state: GameState): void {
     const speedFactor = calcSpeedFactor(nodes, NODE_DEFS)
 
     // 2. Transport goods along connections.
-    tickConnections(nodes, connections)
+    state.lastTransfers = tickConnections(nodes, connections)
 
     // 3. Advance each production node.
     for (const node of nodes) {

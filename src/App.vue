@@ -31,6 +31,11 @@ function simulationStep(): void {
   tick(gameState)
   tickMarket(gameState)
 
+  // Spawn resource particles for goods transported this tick.
+  if (renderer !== null && gameState.lastTransfers !== undefined && gameState.lastTransfers.length > 0) {
+    renderer.spawnParticles(gameState.lastTransfers, gameState)
+  }
+
   // Check win condition after every tick.
   if (!won.value && checkWin(gameState)) {
     won.value = true
