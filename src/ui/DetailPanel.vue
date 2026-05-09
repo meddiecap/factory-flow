@@ -4,6 +4,8 @@ import { NodeType } from '../simulation/types'
 import type { NodeInstance } from '../simulation/types'
 import { NODE_DEFS } from '../simulation/recipes'
 import { upgradeCost } from '../simulation/economy'
+import { applyUpgrade } from '../simulation/upgrades'
+import type { UpgradeType } from '../simulation/upgrades'
 import { gameState } from '../simulation/useGameState'
 
 /** Props: pass the id of the currently selected node, or null to hide the panel. */
@@ -105,6 +107,21 @@ function canAfford(cost: number): boolean {
     return gameState.money >= cost
 }
 
+/**
+ * Applies an upgrade to the currently selected node and deducts the cost.
+ * No-ops when no node is selected or the upgrade is rejected.
+ */
+function buyUpgrade(type: UpgradeType): void {
+    if (node.value === null) return
+    applyUpgrade(node.value, type, gameState)
+}
+
+/** Applies the Market sales-point upgrade independently (custom cost formula). */
+function buySalesPoint(): void {
+    if (node.value === null) return
+    applyUpgrade(node.value, 'salesPoint', gameState)
+}
+
 /** Formats a buffer fill fraction as a percentage string. */
 function fillPct(amount: number, capacity: number): string {
     if (capacity === 0) return '0%'
@@ -193,7 +210,7 @@ function bufferColour(amount: number, capacity: number): string {
                 <button class="rounded px-2 py-0.5 font-medium transition-colors" :class="canAfford(speedUpgradeCost)
                         ? 'bg-blue-700 hover:bg-blue-600 text-white cursor-pointer'
                         : 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-60'
-                    " :disabled="!canAfford(speedUpgradeCost)" title="Upgrade production speed (×1.5 per level)">
+                    " :disabled="!canAfford(speedUpgradeCost)" title="Upgrade production speed (×1.5 per level)" @click="buyUpgrade('speed')">
                     €{{ speedUpgradeCost }}
                 </button>
             </div>
@@ -208,7 +225,7 @@ function bufferColour(amount: number, capacity: number): string {
                         ? 'bg-blue-700 hover:bg-blue-600 text-white cursor-pointer'
                         : 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-60'
                     " :disabled="!canAfford(bufferUpgradeCost)"
-                    title="Increase input and output buffer capacity (+10 per level)">
+                    title="Increase input and output buffer capacity (+10 per level)" @click="buyUpgrade('buffer')">
                     €{{ bufferUpgradeCost }}
                 </button>
             </div>
@@ -223,7 +240,7 @@ function bufferColour(amount: number, capacity: number): string {
                         ? 'bg-blue-700 hover:bg-blue-600 text-white cursor-pointer'
                         : 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-60'
                     " :disabled="!canAfford(efficiencyUpgradeCost)"
-                    title="Reduce input resource consumption (−10% per level, min 50%)">
+                    title="Reduce input resource consumption (−10% per level, min 50%)" @click="buyUpgrade('efficiency')">
                     €{{ efficiencyUpgradeCost }}
                 </button>
             </div>
@@ -238,7 +255,7 @@ function bufferColour(amount: number, capacity: number): string {
                         ? 'bg-blue-700 hover:bg-blue-600 text-white cursor-pointer'
                         : 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-60'
                     " :disabled="!canAfford(energyEfficiencyUpgradeCost)"
-                    title="Reduce fuel consumption (−10% per level, min 50%)">
+                    title="Reduce fuel consumption (−10% per level, min 50%)" @click="buyUpgrade('energyEfficiency')">
                     €{{ energyEfficiencyUpgradeCost }}
                 </button>
             </div>
@@ -252,7 +269,7 @@ function bufferColour(amount: number, capacity: number): string {
                 <button class="rounded px-2 py-0.5 font-medium transition-colors" :class="canAfford(salesPointCost)
                         ? 'bg-blue-700 hover:bg-blue-600 text-white cursor-pointer'
                         : 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-60'
-                    " :disabled="!canAfford(salesPointCost)" title="Add an extra sales point (+20 units/tick sell capacity)">
+                    " :disabled="!canAfford(salesPointCost)" title="Add an extra sales point (+20 units/tick sell capacity)" @click="buySalesPoint()">
                     €{{ salesPointCost }}
                 </button>
             </div>
