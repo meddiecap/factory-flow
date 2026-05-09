@@ -3,6 +3,7 @@ import { NODE_DEFS } from "../simulation/recipes"
 import { NodeType, ResourceType } from "../simulation/types"
 import type { GameState, NodeInstance, Connection } from "../simulation/types"
 import type { TransferEvent } from "../simulation/connections"
+import { effectiveFuelPerTick } from "../simulation/tick"
 
 /** Width and height of one grid cell in pixels. */
 const CELL_SIZE = 32
@@ -253,6 +254,54 @@ function drawNode(
             align: "center",
         }),
     )
+
+    // Energy Supply stats – output rate and connected factory count.
+    if (node.type === NodeType.EnergySupply) {
+        layer.add(
+            new Konva.Text({
+                x: x + 4,
+                y: y + 19,
+                width: w - 8,
+                text: `⚡ ${def.energyOutputPerTick!.toFixed(1)} /tick`,
+                fontSize: 9,
+                fontFamily: "monospace",
+                fill: ENERGY_DOT_COLOR,
+                align: "center",
+            }),
+        )
+        layer.add(
+            new Konva.Text({
+                x: x + 4,
+                y: y + 30,
+                width: w - 8,
+                text: `→ ${energyOutputCount} connected`,
+                fontSize: 9,
+                fontFamily: "monospace",
+                fill: "#9ca3af",
+                align: "center",
+            }),
+        )
+    }
+
+    // Energy consumption label (below node title, yellow) – production factories only.
+    if (def.hasEnergyInput) {
+        const fuelVal = effectiveFuelPerTick(
+            def.fuelPerTick,
+            node.energyEfficiencyUpgradeLevel,
+        )
+        layer.add(
+            new Konva.Text({
+                x: x + 4,
+                y: y + 19,
+                width: w - 8,
+                text: `⚡ ${fuelVal.toFixed(1)} /tick`,
+                fontSize: 9,
+                fontFamily: "monospace",
+                fill: ENERGY_DOT_COLOR,
+                align: "center",
+            }),
+        )
+    }
 
     // Upgrade level display (bottom-left, small monospace text)
     const upgradeText = _upgradeText(node)
