@@ -167,46 +167,9 @@ export class CanvasInteraction {
         const existing = this.dragLayer.find(".dot-hit")
         existing.forEach((s) => s.destroy())
 
+        // Pass 1: body hit rects (below dots in z-order so dots take priority).
         for (const node of state.nodes) {
             const def = NODE_DEFS[node.type]
-
-            // Output dots
-            for (let i = 0; i < def.outputs.length; i++) {
-                const [x, y] = outputDotPos(node, i)
-                const circle = new Konva.Circle({
-                    name: "dot-hit",
-                    x,
-                    y,
-                    radius: DOT_HIT_RADIUS,
-                    fill: "transparent",
-                    // Store metadata as custom attrs
-                })
-                circle.setAttr("dotNodeId", node.id)
-                circle.setAttr("dotIndex", i)
-                circle.setAttr("dotSide", "output")
-                circle.on("mousedown touchstart", () =>
-                    this._startDrag(node.id, i, x, y),
-                )
-                this.dragLayer.add(circle)
-            }
-
-            // Input dots — only hit-testable as drop targets during drag
-            for (let i = 0; i < def.inputs.length; i++) {
-                const [x, y] = inputDotPos(node, i)
-                const circle = new Konva.Circle({
-                    name: "dot-hit",
-                    x,
-                    y,
-                    radius: DOT_HIT_RADIUS,
-                    fill: "transparent",
-                })
-                circle.setAttr("dotNodeId", node.id)
-                circle.setAttr("dotIndex", i)
-                circle.setAttr("dotSide", "input")
-                this.dragLayer.add(circle)
-            }
-
-            // Node body – mousedown starts a potential node drag; click selects.
             const bx = colToPx(node.position.col)
             const by = rowToPx(node.position.row)
             const bw = def.gridSize.width * CELL_SIZE
@@ -260,6 +223,46 @@ export class CanvasInteraction {
             this.dragLayer.add(hitRect)
         }
 
+        // Pass 2: dot circles (on top of body rects so they get priority for mousedown).
+        for (const node of state.nodes) {
+            const def = NODE_DEFS[node.type]
+
+            // Output dots
+            for (let i = 0; i < def.outputs.length; i++) {
+                const [x, y] = outputDotPos(node, i)
+                const circle = new Konva.Circle({
+                    name: "dot-hit",
+                    x,
+                    y,
+                    radius: DOT_HIT_RADIUS,
+                    fill: "transparent",
+                })
+                circle.setAttr("dotNodeId", node.id)
+                circle.setAttr("dotIndex", i)
+                circle.setAttr("dotSide", "output")
+                circle.on("mousedown touchstart", () =>
+                    this._startDrag(node.id, i, x, y),
+                )
+                this.dragLayer.add(circle)
+            }
+
+            // Input dots — only hit-testable as drop targets during drag
+            for (let i = 0; i < def.inputs.length; i++) {
+                const [x, y] = inputDotPos(node, i)
+                const circle = new Konva.Circle({
+                    name: "dot-hit",
+                    x,
+                    y,
+                    radius: DOT_HIT_RADIUS,
+                    fill: "transparent",
+                })
+                circle.setAttr("dotNodeId", node.id)
+                circle.setAttr("dotIndex", i)
+                circle.setAttr("dotSide", "input")
+                this.dragLayer.add(circle)
+            }
+        }
+
         this.dragLayer.batchDraw()
 
         // Wire up stage-level mousemove/mouseup for the drag line
@@ -305,7 +308,12 @@ export class CanvasInteraction {
 
         // --- Connection drag ---
         if (this.dragLine !== null && this.dragStart !== null) {
-            this.dragLine.points([this.dragStart.x, this.dragStart.y, pos.x, pos.y])
+            this.dragLine.points([
+                this.dragStart.x,
+                this.dragStart.y,
+                pos.x,
+                pos.y,
+            ])
             this.dragLayer.batchDraw()
             return
         }
@@ -351,8 +359,12 @@ export class CanvasInteraction {
                     const dx = pos.x - sx
                     const dy = pos.y - sy
                     if (Math.sqrt(dx * dx + dy * dy) <= DOT_HIT_RADIUS * 1.5) {
-                        const targetNodeId = shape.getAttr("dotNodeId") as string
-                        const targetDotIndex = shape.getAttr("dotIndex") as number
+                        const targetNodeId = shape.getAttr(
+                            "dotNodeId",
+                        ) as string
+                        const targetDotIndex = shape.getAttr(
+                            "dotIndex",
+                        ) as number
                         this.callbacks.onConnect(
                             this.dragStart.nodeId,
                             this.dragStart.dotIndex,
