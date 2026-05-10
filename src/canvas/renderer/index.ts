@@ -7,6 +7,7 @@ import type {
 import { NodeType } from "../../simulation/types"
 import type { TransferEvent } from "../../simulation/connections"
 import { calcNodeSpeedFactors } from "../../simulation/energy"
+import { lastSpeedFactors } from "../../simulation/simulator"
 import { calcMarketSlotRevenues } from "../../simulation/throughput"
 import { NODE_DEFS } from "../../simulation/recipes"
 import { outputDotPos, inputDotPos, CELL_SIZE } from "../shared/geometry"
@@ -115,8 +116,9 @@ export class CanvasRenderer {
         // Reuse the speed factors computed by the last tick; fall back to recalculating
         // only on the very first render before tick() has run.
         const speedFactors =
-            state.lastSpeedFactors ??
-            calcNodeSpeedFactors(state.nodes, state.connections, NODE_DEFS)
+            lastSpeedFactors.size > 0
+                ? lastSpeedFactors
+                : calcNodeSpeedFactors(state.nodes, state.connections, NODE_DEFS)
 
         for (const node of state.nodes) {
             const energyOutputCount =

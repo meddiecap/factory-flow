@@ -45,10 +45,4 @@ export interface GameState {
      * particle animations. Not persisted to localStorage.
      */
     lastTransfers?: import("../connections").TransferEvent[]
-    /**
-     * Per-node speed factors computed by the most recent tick.
-     * Stored here so the renderer can reuse them without a second calcNodeSpeedFactors call.
-     * Not persisted to localStorage.
-     */
-    lastSpeedFactors?: Map<string, number>
 }

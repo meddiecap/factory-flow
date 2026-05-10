@@ -7,6 +7,13 @@ import { tickNode } from "./tick"
 import { tickSplitter } from "./splitter"
 
 /**
+ * Speed factors computed by the most recent tick, keyed by node id.
+ * Stored as a plain module-level variable (not in reactive GameState) so the renderer
+ * can read it without Vue wrapping the Map in a Proxy.
+ */
+export let lastSpeedFactors: Map<string, number> = new Map()
+
+/**
  * Advances the entire simulation by one tick, updating all node buffers and connections.
  * Called by the game loop at a fixed interval (50 ms = 20 ticks/sec) to drive production flow.
  * Execution order per tick:
@@ -58,7 +65,7 @@ export function tick(state: GameState): void {
     }
 
     // 5. Cache speed factors for the renderer and advance tick counter.
-    state.lastSpeedFactors = speedFactors
+    lastSpeedFactors = speedFactors
     state.tick++
 }
 
