@@ -8,6 +8,7 @@ import {
     inputDotPos,
     outputDotPos,
     energyOutputDotPos,
+    nodeRenderedHeight,
     CELL_SIZE,
 } from "../shared/geometry"
 import { energyInputDotPos } from "./geometry"
@@ -61,7 +62,7 @@ export function buildDotHitShapes(
         const bx = colToPx(node.position.col)
         const by = rowToPx(node.position.row)
         const bw = def.gridSize.width * CELL_SIZE
-        const bh = def.gridSize.height * CELL_SIZE
+        const bh = nodeRenderedHeight(node)
 
         const hitRect = new Konva.Rect({
             name: "dot-hit",

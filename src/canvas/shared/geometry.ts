@@ -1,5 +1,27 @@
 import { NODE_DEFS } from "../../simulation/recipes"
+import { NodeType } from "../../simulation/types"
 import type { NodeInstance } from "../../simulation/types"
+
+/** Minimum pixel height per input slot when a Market node shows per-slot revenue labels. */
+export const MARKET_SLOT_ROW_HEIGHT = 20
+
+/**
+ * Returns the actual rendered pixel height for a node.
+ * Market nodes grow vertically to fit per-slot revenue labels when they have multiple sales points.
+ * All other node types return their static grid height.
+ *
+ * @param node - Node instance to measure.
+ * @returns Rendered pixel height.
+ */
+export function nodeRenderedHeight(node: NodeInstance): number {
+    const def = NODE_DEFS[node.type]
+    const base = def.gridSize.height * CELL_SIZE
+    if (node.type !== NodeType.Market) return base
+    return Math.max(
+        base,
+        40 + node.inputBuffers.length * MARKET_SLOT_ROW_HEIGHT,
+    )
+}
 
 /** Width and height of one grid cell in pixels. Shared by renderer and interaction. */
 export const CELL_SIZE = 32
@@ -96,9 +118,10 @@ export function inputDotPos(
     const total = def.hasEnergyInput
         ? node.inputBuffers.length + 1
         : node.inputBuffers.length
+    const hPx = nodeRenderedHeight(node)
     return [
         colToPx(node.position.col),
-        dotY(node.position.row, dotIndex, total, def.gridSize.height),
+        rowToPx(node.position.row) + (hPx / (total + 1)) * (dotIndex + 1),
     ]
 }
 

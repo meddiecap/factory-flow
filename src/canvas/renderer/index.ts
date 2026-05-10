@@ -7,6 +7,7 @@ import type {
 import { NodeType } from "../../simulation/types"
 import type { TransferEvent } from "../../simulation/connections"
 import { calcNodeSpeedFactors } from "../../simulation/energy"
+import { calcMarketSlotRevenues } from "../../simulation/throughput"
 import { NODE_DEFS } from "../../simulation/recipes"
 import { outputDotPos, inputDotPos, CELL_SIZE } from "../shared/geometry"
 import {
@@ -96,11 +97,21 @@ export class CanvasRenderer {
                           (c) => c.isEnergy && c.fromNodeId === node.id,
                       ).length
                     : 0
+            const slotRevenues =
+                node.type === NodeType.Market
+                    ? calcMarketSlotRevenues(
+                          node,
+                          state.nodes,
+                          state.connections,
+                          speedFactors,
+                      )
+                    : undefined
             drawNode(
                 this.nodeLayer,
                 node,
                 energyOutputCount,
                 speedFactors.get(node.id) ?? 1.0,
+                slotRevenues,
             )
         }
 

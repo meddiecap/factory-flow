@@ -1,6 +1,6 @@
 import { NodeType } from "./types"
 import type { NodeInstance, Connection } from "./types"
-import { NODE_DEFS } from "./recipes"
+import { NODE_DEFS, MARKET_PRICES } from "./recipes"
 
 /**
  * Recursively traces back through pass-through nodes (Splitter, Warehouse) to
@@ -82,4 +82,42 @@ export function traceUnitsPerTick(
     }
 
     return null
+}
+
+/**
+ * Computes the projected steady-state revenue in €/s for each input slot of a Market node.
+ * Traces back through the connection graph to find the upstream producer's output rate.
+ *
+ * @param node - The Market node to compute revenues for.
+ * @param nodes - All active node instances.
+ * @param connections - All active connections.
+ * @param speedFactors - Pre-computed per-node speed factors (from calcNodeSpeedFactors).
+ * @returns Array with one entry per input slot: revenue in €/s, or null when unconnected.
+ */
+export function calcMarketSlotRevenues(
+    node: NodeInstance,
+    nodes: NodeInstance[],
+    connections: Connection[],
+    speedFactors: Map<string, number>,
+): (number | null)[] {
+    return node.inputBuffers.map((_buf, i) => {
+        const conn = connections.find(
+            (c) => !c.isEnergy && c.toNodeId === node.id && c.toDotIndex === i,
+        )
+        if (!conn) return null
+        const srcNode = nodes.find((n) => n.id === conn.fromNodeId)
+        if (!srcNode) return null
+        const unitsPerTick = traceUnitsPerTick(
+            conn.fromNodeId,
+            conn.fromDotIndex,
+            nodes,
+            connections,
+            speedFactors,
+        )
+        if (unitsPerTick === null) return null
+        const resource = srcNode.outputBuffers[conn.fromDotIndex]?.resource
+        if (resource === undefined) return null
+        const price = MARKET_PRICES[resource] ?? 0
+        return unitsPerTick * price * 20 // × 20 ticks/s → €/s
+    })
 }

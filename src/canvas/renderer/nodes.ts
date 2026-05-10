@@ -3,7 +3,13 @@ import { NODE_DEFS } from "../../simulation/recipes"
 import { NodeType } from "../../simulation/types"
 import type { NodeInstance } from "../../simulation/types"
 import { effectiveFuelPerTick } from "../../simulation/tick"
-import { colToPx, rowToPx, dotY, CELL_SIZE } from "../shared/geometry"
+import {
+    colToPx,
+    rowToPx,
+    dotY,
+    CELL_SIZE,
+    nodeRenderedHeight,
+} from "../shared/geometry"
 import {
     DOT_RADIUS,
     DOT_INPUT_COLOR,
@@ -44,23 +50,26 @@ function _upgradeText(node: NodeInstance): string | null {
  * Draws a single node as a rectangle with label, input/output dots and a status bar.
  * Production nodes show a cycle-progress bar; Splitter shows its ratio; Warehouse
  * shows its buffer fill fraction. EnergySupply receives a dynamic output dot count.
+ * Market nodes grow vertically and show per-slot revenue labels next to each input dot.
  *
  * @param layer - The Konva layer to draw onto.
  * @param node - Runtime node instance with position data.
  * @param energyOutputCount - For EnergySupply: number of existing energy connections.
  * @param speedFactor - Current speed factor (0–1+) for energy-powered nodes.
+ * @param slotRevenues - For Market nodes: projected €/s per input slot (null = unconnected).
  */
 export function drawNode(
     layer: Konva.Layer,
     node: NodeInstance,
     energyOutputCount = 0,
     speedFactor = 1.0,
+    slotRevenues?: (number | null)[],
 ): void {
     const def = NODE_DEFS[node.type]
     const x = colToPx(node.position.col)
     const y = rowToPx(node.position.row)
     const w = def.gridSize.width * CELL_SIZE
-    const h = def.gridSize.height * CELL_SIZE
+    const h = nodeRenderedHeight(node)
 
     // Node body
     layer.add(
@@ -190,21 +199,42 @@ export function drawNode(
     const totalInputDots = def.hasEnergyInput ? inputCount + 1 : inputCount
 
     for (let i = 0; i < inputCount; i++) {
+        const dotYPos =
+            rowToPx(node.position.row) + (h / (totalInputDots + 1)) * (i + 1)
         layer.add(
             new Konva.Circle({
                 x,
-                y: dotY(
-                    node.position.row,
-                    i,
-                    totalInputDots,
-                    def.gridSize.height,
-                ),
+                y: dotYPos,
                 radius: DOT_RADIUS,
                 fill: DOT_INPUT_COLOR,
                 stroke: "#1e40af",
                 strokeWidth: 1,
             }),
         )
+        // Market: revenue label next to each input dot
+        if (node.type === NodeType.Market && slotRevenues !== undefined) {
+            const rev = slotRevenues[i] ?? null
+            const text =
+                rev === null
+                    ? "—"
+                    : rev > 0
+                      ? `€${rev.toLocaleString(undefined, { maximumFractionDigits: 1 })}/s`
+                      : "€0/s"
+            const fill =
+                rev === null ? "#6b7280" : rev > 0 ? "#fbbf24" : "#6b7280"
+            layer.add(
+                new Konva.Text({
+                    x: x + DOT_RADIUS + 4,
+                    y: dotYPos - 5,
+                    width: w - DOT_RADIUS - 8,
+                    text,
+                    fontSize: 9,
+                    fontFamily: "monospace",
+                    fill,
+                    align: "right",
+                }),
+            )
+        }
     }
 
     // Energy input dot (left edge, yellow) – production factories only.

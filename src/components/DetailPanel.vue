@@ -2,13 +2,13 @@
 import { computed } from 'vue'
 import { NodeType } from '../simulation/types'
 import type { NodeInstance } from '../simulation/types'
-import { NODE_DEFS, MARKET_PRICES } from '../simulation/recipes'
+import { NODE_DEFS } from '../simulation/recipes'
 import { upgradeCost } from '../simulation/economy'
 import { applyUpgrade } from '../simulation/upgrades'
 import type { UpgradeType } from '../simulation/upgrades'
 import { gameState } from '../simulation/useGameState'
 import { calcNodeSpeedFactors } from '../simulation/energy'
-import { traceUnitsPerTick } from '../simulation/throughput'
+import { calcMarketSlotRevenues } from '../simulation/throughput'
 
 /** Props: pass the id of the currently selected node, or null to hide the panel. */
 const props = defineProps<{ nodeId: string | null }>()
@@ -150,20 +150,7 @@ function fillPct(amount: number, capacity: number): string {
 const marketSlotRevenues = computed<Array<number | null>>(() => {
     if (!node.value || node.value.type !== NodeType.Market) return []
     const speedFactors = calcNodeSpeedFactors(gameState.nodes, gameState.connections, NODE_DEFS)
-    return node.value.inputBuffers.map((_buf, i) => {
-        const conn = gameState.connections.find(
-            (c) => !c.isEnergy && c.toNodeId === node.value!.id && c.toDotIndex === i,
-        )
-        if (!conn) return null
-        const srcNode = gameState.nodes.find((n) => n.id === conn.fromNodeId)
-        if (!srcNode) return null
-        const unitsPerTick = traceUnitsPerTick(conn.fromNodeId, conn.fromDotIndex, gameState.nodes, gameState.connections, speedFactors)
-        if (unitsPerTick === null) return null
-        const resource = srcNode.outputBuffers[conn.fromDotIndex]?.resource
-        if (resource === undefined) return null
-        const price = MARKET_PRICES[resource] ?? 0
-        return unitsPerTick * price * 20 // × 20 ticks/s → €/s
-    })
+    return calcMarketSlotRevenues(node.value, gameState.nodes, gameState.connections, speedFactors)
 })
 
 /** Colour class for a buffer bar based on fill level. */
