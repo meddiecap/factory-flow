@@ -96,6 +96,21 @@ Private helpers die enkel intern worden gebruikt hoeven geen uitgebreide docbloc
 
 Verplaats dergelijke functies naar een passend bestand in `src/simulation/` en exporteer ze als gewone TypeScript-functies.
 
+## Performance
+
+- Kies altijd de meest efficiënte datastructuur voor de use case: gebruik `Map` of `Set` voor O(1)-opzoekingen in plaats van `.find()` of `.filter()` over arrays wanneer de collectie groot kan worden.
+- Vermijd onnodige iteraties: combineer bewerkingen in één doorloop waar mogelijk; loop niet meerdere keren over dezelfde collectie.
+- Tick-logica draait elke paar milliseconden — O(n²)-algoritmen in de simulatielaag zijn verboden; streef naar O(n) of O(n log n).
+- Cache dure berekeningen (graaf-traversals, reachability, receptopzoekingen) en herbereken alleen bij een echte state-wijziging.
+- Render-callbacks (canvas `requestAnimationFrame`) mogen geen spellogica bevatten; houd ze zo slank mogelijk.
+
+## DRY – Don't Repeat Yourself
+
+- Extraheer herhaalde logica altijd naar een gedeelde helperfunctie of utility; dupliceer nooit meer dan één keer dezelfde berekening.
+- Recepten, constanten en drempelwaarden staan op één plek (bijv. `recipes.ts`, `constants.ts`); importeer ze — kopieer ze nooit.
+- Als twee codepaden hetzelfde patroon volgen, maak dan een generieke functie met parameters in plaats van twee bijna-identieke implementaties.
+- Controleer bij elke nieuwe functie of vergelijkbare logica al elders bestaat voordat je iets nieuws schrijft.
+
 ## Spelregels voor code
 
 - Productiesnelheid wordt altijd uitgedrukt als **eenheden per tick**
