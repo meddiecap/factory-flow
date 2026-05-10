@@ -131,10 +131,14 @@ watch(() => gameState.tick, () => {
   renderer?.render(gameState)
 })
 
-// Rebuild hit areas only when nodes or connections are added/removed.
-// This prevents click events being dropped because hit shapes were destroyed mid-click.
+// Rebuild hit areas when nodes, connections, or input-dot counts change.
+// The inputBuffers sum catches sales-point upgrades on Market nodes, which add a
+// new input dot without changing nodes.length or connections.length.
 watch(
-  () => gameState.nodes.length + gameState.connections.length,
+  () =>
+    gameState.nodes.length +
+    gameState.connections.length +
+    gameState.nodes.reduce((sum, n) => sum + n.inputBuffers.length, 0),
   () => {
     if (renderer === null || interaction === null) return
     renderer.render(gameState)
