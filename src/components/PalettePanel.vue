@@ -98,19 +98,53 @@ function onDragStart(event: DragEvent, type: NodeType): void {
 
         <!-- Building tray: horizontal row of buildings for the active category -->
         <Transition name="tray">
-            <div v-if="activeGroupIndex !== null"
-                class="flex gap-2 rounded-t-lg bg-gray-800 bg-opacity-95 px-4 py-3 shadow-lg">
+            <div v-if="activeGroupIndex !== null" class="flex gap-3 rounded-t-xl px-5 py-4 shadow-2xl"
+                style="background: #0f172a; border: 1px solid #1e293b; border-bottom: none">
                 <div v-for="entry in groups[activeGroupIndex].entries" :key="entry.type"
-                    class="flex w-28 flex-col items-center rounded border px-2 py-2 text-xs text-gray-200 transition-colors"
+                    class="relative flex w-32 flex-col overflow-hidden rounded-xl border transition-all duration-200"
                     :class="{
-                        'cursor-grab border-blue-700 bg-gray-700 hover:bg-gray-600': entry.unlocked && entry.affordable,
-                        'cursor-not-allowed border-gray-700 bg-gray-800 opacity-50': !entry.unlocked,
-                        'cursor-not-allowed border-yellow-800 bg-gray-800 opacity-70': entry.unlocked && !entry.affordable,
-                    }" :draggable="entry.unlocked && entry.affordable"
+                        'cursor-grab hover:-translate-y-1 hover:shadow-lg': entry.unlocked && entry.affordable,
+                        'cursor-not-allowed opacity-40': !entry.unlocked,
+                        'cursor-not-allowed opacity-60': entry.unlocked && !entry.affordable,
+                    }" :style="entry.unlocked && entry.affordable
+                        ? { borderColor: `${groups[activeGroupIndex].accent}66`, background: '#1e293b', boxShadow: `0 0 12px ${groups[activeGroupIndex].accent}22` }
+                        : { borderColor: '#374151', background: '#1e293b' }"
+                    :draggable="entry.unlocked && entry.affordable"
                     @dragstart="entry.unlocked && entry.affordable ? onDragStart($event, entry.type) : $event.preventDefault()">
-                    <span class="block truncate font-medium">{{ entry.def.displayName }}</span>
-                    <span v-if="entry.unlocked" class="text-gray-400">€{{ entry.cost }}</span>
-                    <span v-else class="text-red-400">Locked</span>
+
+                    <!-- Accent bar top -->
+                    <span class="block h-1 w-full"
+                        :style="{ background: entry.unlocked ? groups[activeGroupIndex].accent : '#374151' }" />
+
+                    <!-- Card body -->
+                    <div class="flex flex-1 flex-col gap-1 px-3 py-2">
+                        <span class="block text-xs font-bold leading-tight text-gray-100">{{ entry.def.displayName
+                            }}</span>
+
+                        <!-- Status row -->
+                        <div class="mt-1">
+                            <span v-if="!entry.unlocked"
+                                class="inline-flex items-center gap-1 rounded-full bg-red-950 px-2 py-0.5 text-[10px] font-medium text-red-400">
+                                <svg class="h-2.5 w-2.5" viewBox="0 0 16 16" fill="currentColor">
+                                    <path d="M8 1a4 4 0 100 8A4 4 0 008 1zM6 8V6h4v2H6zm0 1h4v4H6V9z" />
+                                </svg>
+                                Locked
+                            </span>
+                            <span v-else-if="!entry.affordable"
+                                class="inline-flex items-center gap-1 rounded-full bg-yellow-950 px-2 py-0.5 text-[10px] font-medium text-yellow-400">
+                                <svg class="h-2.5 w-2.5" viewBox="0 0 16 16" fill="currentColor">
+                                    <path
+                                        d="M8 1a7 7 0 100 14A7 7 0 008 1zm.75 4v4.5h-1.5V5h1.5zm0 5.5v1.5h-1.5v-1.5h1.5z" />
+                                </svg>
+                                €{{ entry.cost }}
+                            </span>
+                            <span v-else
+                                class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium"
+                                :style="{ background: `${groups[activeGroupIndex].accent}22`, color: groups[activeGroupIndex].accent }">
+                                €{{ entry.cost }}
+                            </span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </Transition>
