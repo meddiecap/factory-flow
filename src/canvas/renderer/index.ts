@@ -87,10 +87,18 @@ export class CanvasRenderer {
         const energyOutputCounts = new Map<string, number>()
         for (const c of state.connections) {
             if (!c.isEnergy) continue
-            energyOutputCounts.set(c.fromNodeId, (energyOutputCounts.get(c.fromNodeId) ?? 0) + 1)
+            energyOutputCounts.set(
+                c.fromNodeId,
+                (energyOutputCounts.get(c.fromNodeId) ?? 0) + 1,
+            )
         }
 
-        drawConnections(this.connectionLayer, state.connections, nodeMap, energyOutputCounts)
+        drawConnections(
+            this.connectionLayer,
+            state.connections,
+            nodeMap,
+            energyOutputCounts,
+        )
 
         const speedFactors = calcNodeSpeedFactors(
             state.nodes,
