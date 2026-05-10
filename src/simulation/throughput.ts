@@ -13,6 +13,8 @@ import { NODE_DEFS, MARKET_PRICES } from "./recipes"
  * @param connections - All active connections.
  * @param speedFactors - Pre-computed per-node speed factors (from calcNodeSpeedFactors).
  * @param depth - Recursion depth guard; stops at 20 to prevent infinite loops.
+ * @param nodeMap - Optional pre-built node lookup map for O(1) access; built once on first call.
+ * @param connsByTarget - Optional pre-built map keyed by `toNodeId:toDotIndex` for non-energy connections.
  * @returns Steady-state units/tick, or null when no producing node is reachable.
  */
 export function traceUnitsPerTick(
@@ -22,9 +24,22 @@ export function traceUnitsPerTick(
     connections: Connection[],
     speedFactors: Map<string, number>,
     depth = 0,
+    nodeMap?: Map<string, NodeInstance>,
+    connsByTarget?: Map<string, Connection>,
 ): number | null {
     if (depth > 20) return null // guard against cycles
-    const srcNode = nodes.find((n) => n.id === nodeId)
+
+    // Build index maps once on the initial call and pass through recursion.
+    const nMap = nodeMap ?? new Map(nodes.map((n) => [n.id, n]))
+    const cMap =
+        connsByTarget ??
+        new Map(
+            connections
+                .filter((c) => !c.isEnergy)
+                .map((c) => [`${c.toNodeId}:${c.toDotIndex}`, c]),
+        )
+
+    const srcNode = nMap.get(nodeId)
     if (!srcNode) return null
     const srcDef = NODE_DEFS[srcNode.type]
 
@@ -43,10 +58,7 @@ export function traceUnitsPerTick(
 
     if (srcNode.type === NodeType.Splitter) {
         // Trace back through the splitter's single input connection.
-        const inConn = connections.find(
-            (c) =>
-                !c.isEnergy && c.toNodeId === srcNode.id && c.toDotIndex === 0,
-        )
+        const inConn = cMap.get(`${srcNode.id}:0`)
         if (!inConn) return null
         const upstreamRate = traceUnitsPerTick(
             inConn.fromNodeId,
@@ -55,6 +67,8 @@ export function traceUnitsPerTick(
             connections,
             speedFactors,
             depth + 1,
+            nMap,
+            cMap,
         )
         if (upstreamRate === null) return null
         const ratio =
@@ -66,10 +80,7 @@ export function traceUnitsPerTick(
 
     if (srcNode.type === NodeType.Warehouse) {
         // Warehouse is a straight passthrough — trace back its input.
-        const inConn = connections.find(
-            (c) =>
-                !c.isEnergy && c.toNodeId === srcNode.id && c.toDotIndex === 0,
-        )
+        const inConn = cMap.get(`${srcNode.id}:0`)
         if (!inConn) return null
         return traceUnitsPerTick(
             inConn.fromNodeId,
@@ -78,6 +89,8 @@ export function traceUnitsPerTick(
             connections,
             speedFactors,
             depth + 1,
+            nMap,
+            cMap,
         )
     }
 
@@ -100,12 +113,18 @@ export function calcMarketSlotRevenues(
     connections: Connection[],
     speedFactors: Map<string, number>,
 ): (number | null)[] {
+    // Build index maps once for all slot lookups and recursive traces.
+    const nodeMap = new Map(nodes.map((n) => [n.id, n]))
+    const connsByTarget = new Map(
+        connections
+            .filter((c) => !c.isEnergy)
+            .map((c) => [`${c.toNodeId}:${c.toDotIndex}`, c]),
+    )
+
     return node.inputBuffers.map((_buf, i) => {
-        const conn = connections.find(
-            (c) => !c.isEnergy && c.toNodeId === node.id && c.toDotIndex === i,
-        )
+        const conn = connsByTarget.get(`${node.id}:${i}`)
         if (!conn) return null
-        const srcNode = nodes.find((n) => n.id === conn.fromNodeId)
+        const srcNode = nodeMap.get(conn.fromNodeId)
         if (!srcNode) return null
         const unitsPerTick = traceUnitsPerTick(
             conn.fromNodeId,
@@ -113,6 +132,9 @@ export function calcMarketSlotRevenues(
             nodes,
             connections,
             speedFactors,
+            0,
+            nodeMap,
+            connsByTarget,
         )
         if (unitsPerTick === null) return null
         const resource = srcNode.outputBuffers[conn.fromDotIndex]?.resource
