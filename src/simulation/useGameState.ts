@@ -239,6 +239,16 @@ function wouldCreateCycle(
     connections: Connection[],
 ): boolean {
     if (fromId === toId) return true
+    // Build adjacency map once; DFS is then O(nodes + connections).
+    const adj = new Map<string, string[]>()
+    for (const c of connections) {
+        let targets = adj.get(c.fromNodeId)
+        if (!targets) {
+            targets = []
+            adj.set(c.fromNodeId, targets)
+        }
+        targets.push(c.toNodeId)
+    }
     // DFS: can we reach `fromId` starting from `toId`?
     const visited = new Set<string>()
     const stack = [toId]
@@ -247,8 +257,9 @@ function wouldCreateCycle(
         if (current === fromId) return true
         if (visited.has(current)) continue
         visited.add(current)
-        for (const c of connections) {
-            if (c.fromNodeId === current) stack.push(c.toNodeId)
+        const neighbors = adj.get(current)
+        if (neighbors) {
+            for (const n of neighbors) stack.push(n)
         }
     }
     return false
