@@ -1,5 +1,5 @@
 import { NodeType, ResourceType } from "./types"
-import type { GameState } from "./types"
+import type { GameState, NodeInstance } from "./types"
 import { NODE_DEFS } from "./recipes"
 import { calcNodeSpeedFactors } from "./energy"
 import { tickConnections } from "./connections"
@@ -21,11 +21,15 @@ import { tickSplitter } from "./splitter"
 export function tick(state: GameState): void {
     const { nodes, connections } = state
 
+    // Build nodeMap once and share it with all sub-steps to avoid redundant O(n) builds.
+    const nodeMap = new Map<string, NodeInstance>()
+    for (const node of nodes) nodeMap.set(node.id, node)
+
     // 1. Per-node speed factors from explicit energy connections.
-    const speedFactors = calcNodeSpeedFactors(nodes, connections, NODE_DEFS)
+    const speedFactors = calcNodeSpeedFactors(nodes, connections, NODE_DEFS, nodeMap)
 
     // 2. Transport goods along resource connections (energy connections are skipped).
-    state.lastTransfers = tickConnections(nodes, connections)
+    state.lastTransfers = tickConnections(nodes, connections, nodeMap)
 
     // 3. Advance each production node.
     for (const node of nodes) {

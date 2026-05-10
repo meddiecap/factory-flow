@@ -19,11 +19,15 @@ export function calcNodeSpeedFactors(
     nodes: NodeInstance[],
     connections: Connection[],
     defs: Record<NodeType, NodeDef>,
+    nodeMap?: Map<string, NodeInstance>,
 ): Map<string, number> {
     const result = new Map<string, number>()
 
-    const nodeMap = new Map<string, NodeInstance>()
-    for (const node of nodes) nodeMap.set(node.id, node)
+    // Reuse a pre-built map when provided (avoids a redundant O(n) build in tick()).
+    const map: Map<string, NodeInstance> = nodeMap ?? new Map()
+    if (nodeMap === undefined) {
+        for (const node of nodes) map.set(node.id, node)
+    }
 
     // Build O(1) indexes from the energy connections so the node loop stays O(n).
     // energyByTarget: toNodeId → the single Connection powering that factory.
@@ -56,7 +60,7 @@ export function calcNodeSpeedFactors(
             continue
         }
 
-        const supply = nodeMap.get(energyConn.fromNodeId)
+        const supply = map.get(energyConn.fromNodeId)
         if (supply === undefined) {
             result.set(node.id, 0)
             continue

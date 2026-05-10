@@ -44,6 +44,13 @@ export class CanvasRenderer {
     private _particles = new Map<string, Konva.Circle[]>()
 
     /**
+     * Cached node and connection maps built during render(), reused by spawnParticles()
+     * to avoid a second O(n) pass over nodes/connections on the same tick.
+     */
+    private _nodeMap = new Map<string, NodeInstance>()
+    private _connMap = new Map<string, Connection>()
+
+    /**
      * Creates a new CanvasRenderer and attaches a Konva Stage to the given container.
      * Sets up four rendering layers: grid, connections, nodes, and particles.
      *
@@ -81,6 +88,11 @@ export class CanvasRenderer {
 
         const nodeMap = new Map<string, NodeInstance>()
         for (const node of state.nodes) nodeMap.set(node.id, node)
+        this._nodeMap = nodeMap
+
+        const connMap = new Map<string, Connection>()
+        for (const conn of state.connections) connMap.set(conn.id, conn)
+        this._connMap = connMap
 
         // Pre-build energyOutputCounts once so neither drawConnections nor the
         // node loop has to filter all connections per node (O(n) instead of O(n²)).
@@ -146,16 +158,14 @@ export class CanvasRenderer {
      * Spawns animated resource particles for each transfer event from the last tick.
      * Particles travel from the output dot of the source node to the input dot of the
      * target node along the Manhattan route of the connection.
+     * Relies on the nodeMap and connMap cached by the preceding render() call.
      *
      * @param events - Transfer events returned by tickConnections.
-     * @param state - Current game state (used for node/connection lookup).
      */
-    spawnParticles(events: TransferEvent[], state: GameState): void {
-        const nodeMap = new Map<string, NodeInstance>()
-        for (const node of state.nodes) nodeMap.set(node.id, node)
-
-        const connMap = new Map<string, Connection>()
-        for (const conn of state.connections) connMap.set(conn.id, conn)
+    spawnParticles(events: TransferEvent[]): void {
+        // Reuse the maps built by the preceding render() call on this tick.
+        const nodeMap = this._nodeMap
+        const connMap = this._connMap
 
         for (const ev of events) {
             const conn = connMap.get(ev.connectionId)

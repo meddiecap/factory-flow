@@ -41,16 +41,18 @@ export interface TransferEvent {
  *
  * @param nodes - All node instances on the canvas, indexed by id for fast lookup.
  * @param connections - All active connections to process.
+ * @param nodeMap - Optional pre-built id → node map; built internally when omitted.
  * @returns A list of transfer events, one per connection where goods moved.
  */
 export function tickConnections(
     nodes: NodeInstance[],
     connections: Connection[],
+    nodeMap?: Map<string, NodeInstance>,
 ): TransferEvent[] {
-    // Build a lookup map for O(1) node access.
-    const nodeMap = new Map<string, NodeInstance>()
-    for (const node of nodes) {
-        nodeMap.set(node.id, node)
+    // Reuse a pre-built map when provided (avoids a redundant O(n) build in tick()).
+    const map: Map<string, NodeInstance> = nodeMap ?? new Map()
+    if (nodeMap === undefined) {
+        for (const node of nodes) map.set(node.id, node)
     }
 
     const events: TransferEvent[] = []
@@ -59,8 +61,8 @@ export function tickConnections(
         // Energy connections are handled by the energy system, not as buffer transfers.
         if (conn.isEnergy) continue
 
-        const source = nodeMap.get(conn.fromNodeId)
-        const target = nodeMap.get(conn.toNodeId)
+        const source = map.get(conn.fromNodeId)
+        const target = map.get(conn.toNodeId)
         if (source === undefined || target === undefined) continue
 
         const outBuf = source.outputBuffers[conn.fromDotIndex]
