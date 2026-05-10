@@ -93,16 +93,20 @@ export function buildDotHitShapes(
         layer.add(hitRect)
     }
 
+    // Pre-build energyOutputCounts so the dot loop below is O(n) instead of O(n²).
+    const energyOutputCounts = new Map<string, number>()
+    for (const c of state.connections) {
+        if (!c.isEnergy) continue
+        energyOutputCounts.set(c.fromNodeId, (energyOutputCounts.get(c.fromNodeId) ?? 0) + 1)
+    }
+
     // Pass 2: dot circles (on top of body rects so they get priority for mousedown).
     for (const node of state.nodes) {
         const def = NODE_DEFS[node.type]
 
         if (node.type === NodeType.EnergySupply) {
             // EnergySupply: dynamic energy output dots (N connected + 1 free).
-            const energyConns = state.connections.filter(
-                (c) => c.isEnergy && c.fromNodeId === node.id,
-            )
-            const totalDots = energyConns.length + 1
+            const totalDots = (energyOutputCounts.get(node.id) ?? 0) + 1
             for (let i = 0; i < totalDots; i++) {
                 const [x, y] = energyOutputDotPos(node, i, totalDots)
                 _addDotCircle(layer, node.id, i, "output", x, y, cbs.onDotDown)
