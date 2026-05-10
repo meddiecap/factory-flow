@@ -1,14 +1,13 @@
 import Konva from "konva"
 import type { NodeInstance, Connection } from "../../simulation/types"
 import type { TransferEvent } from "../../simulation/connections"
-import { outputDotPos, inputDotPos } from "../shared/geometry"
+import { outputDotPos, inputDotPos, routeWaypoints } from "../shared/geometry"
 import {
     RESOURCE_COLORS,
     MAX_PARTICLES_PER_TICK,
     PARTICLE_DURATION_MS,
     PARTICLE_RADIUS,
 } from "./constants"
-import { routeWaypoints } from "./connections"
 
 /**
  * Manages animated resource particles on the particle layer.
