@@ -53,39 +53,34 @@ export function tickSplitter(node: NodeInstance): void {
     // Small epsilon to guard against floating-point drift (e.g. 0.9999…8 instead of 1).
     const THRESHOLD = 1 - 1e-9
 
-    // Process all available items this tick.
+    // Process exactly one item per tick using fractional credit accumulation.
     // Each item adds ratioA credit to acc[0] (→ A) and ratioB credit to acc[1] (→ B).
     // When a credit reaches 1, one item is dispatched; if that output is full the item
-    // overflows to the other output instead. Credits below 1 carry over to the next item.
-    while (inBuf.amount >= 1) {
-        if (
-            outBufA.amount >= outBufA.capacity &&
-            outBufB.amount >= outBufB.capacity
-        )
-            break
+    // overflows to the other output instead. Credits below 1 carry over to the next tick.
+    if (inBuf.amount < 1) return
+    if (
+        outBufA.amount >= outBufA.capacity &&
+        outBufB.amount >= outBufB.capacity
+    )
+        return
 
-        inBuf.amount -= 1
-        acc[0] += ratioA
-        acc[1] += ratioB
+    inBuf.amount -= 1
+    acc[0] += ratioA
+    acc[1] += ratioB
 
-        // Dispatch A credit — overflow to B when A is full.
-        if (acc[0] >= THRESHOLD) {
-            acc[0] -= 1
-            if (outBufA.amount < outBufA.capacity) {
-                outBufA.amount += 1
-            } else {
-                outBufB.amount += 1
-            }
+    // Dispatch A credit — drop when A is full (no overflow to B).
+    if (acc[0] >= THRESHOLD) {
+        acc[0] -= 1
+        if (outBufA.amount < outBufA.capacity) {
+            outBufA.amount += 1
         }
+    }
 
-        // Dispatch B credit — overflow to A when B is full.
-        if (acc[1] >= THRESHOLD) {
-            acc[1] -= 1
-            if (outBufB.amount < outBufB.capacity) {
-                outBufB.amount += 1
-            } else {
-                outBufA.amount += 1
-            }
+    // Dispatch B credit — drop when B is full (no overflow to A).
+    if (acc[1] >= THRESHOLD) {
+        acc[1] -= 1
+        if (outBufB.amount < outBufB.capacity) {
+            outBufB.amount += 1
         }
     }
 }
