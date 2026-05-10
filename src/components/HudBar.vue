@@ -8,23 +8,24 @@ function fmt(n: number): string {
 </script>
 
 <template>
-    <header class="flex shrink-0 items-center justify-between bg-gray-800 px-4 py-2 text-sm text-gray-200 shadow">
-        <div class="flex gap-8">
-            <!-- Current balance -->
-            <span>
-                <span class="text-gray-400">Balance</span>
-                <strong class="ml-1 text-green-400">€{{ fmt(gameState.money) }}</strong>
-            </span>
-            <!-- Total earned (used for tech tree unlock thresholds) -->
-            <span>
-                <span class="text-gray-400">Earned</span>
-                <strong class="ml-1">€{{ fmt(gameState.totalEarned) }}</strong>
-            </span>
-            <!-- Simulation tick counter -->
-            <span>
-                <span class="text-gray-400">Tick</span>
-                <strong class="ml-1 tabular-nums">{{ gameState.tick }}</strong>
-            </span>
-        </div>
+    <header
+        class="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-6 rounded-2xl border border-gray-700 bg-gray-900 bg-opacity-95 px-5 py-2 text-sm text-gray-200 shadow-2xl backdrop-blur-sm pointer-events-none">
+        <!-- Current balance -->
+        <span class="flex items-center gap-1.5">
+            <span class="text-gray-400 text-xs">Balance</span>
+            <strong class="text-green-400 tabular-nums">€{{ fmt(gameState.money) }}</strong>
+        </span>
+        <span class="w-px h-4 bg-gray-700" />
+        <!-- Total earned -->
+        <span class="flex items-center gap-1.5">
+            <span class="text-gray-400 text-xs">Earned</span>
+            <strong class="tabular-nums">€{{ fmt(gameState.totalEarned) }}</strong>
+        </span>
+        <span class="w-px h-4 bg-gray-700" />
+        <!-- Simulation tick counter -->
+        <span class="flex items-center gap-1.5">
+            <span class="text-gray-400 text-xs">Tick</span>
+            <strong class="tabular-nums">{{ gameState.tick }}</strong>
+        </span>
     </header>
 </template>

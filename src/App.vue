@@ -180,12 +180,11 @@ function restart(): void {
 </script>
 
 <template>
-  <div class="relative flex h-screen w-screen flex-col overflow-hidden bg-gray-900">
-    <!-- Top HUD bar -->
-    <HudBar />
-
-    <!-- Main area: canvas fills all remaining space -->
-    <div class="relative min-h-0 flex-1 overflow-hidden">
+  <div class="relative flex h-screen w-screen overflow-hidden bg-gray-900">
+    <!-- Main area: canvas fills entire screen -->
+    <div class="relative h-full w-full">
+      <!-- Top HUD: floating centered pill overlay -->
+      <HudBar />
       <!-- Canvas container – Konva mounts inside this div, fills remaining space -->
       <div id="game-canvas" class="h-full w-full" />
 
