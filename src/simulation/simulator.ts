@@ -43,25 +43,22 @@ export function tick(state: GameState): void {
     // 2. Transport goods along resource connections (energy connections are skipped).
     state.lastTransfers = tickConnections(nodes, connections, nodeMap)
 
-    // 3. Advance each production node.
+    // 3. Advance each production node; collect splitters for deferred step 4.
+    const splitters: NodeInstance[] = []
     for (const node of nodes) {
-        const def = NODE_DEFS[node.type]
-        if (def === undefined) continue
-
         if (node.type === NodeType.Splitter) {
-            // Splitters are handled in step 4.
+            splitters.push(node)
             continue
         }
-
+        const def = NODE_DEFS[node.type]
+        if (def === undefined) continue
         const sf = speedFactors.get(node.id) ?? 1.0
         tickNode(node, def, sf)
     }
 
-    // 4. Process Splitter nodes.
-    for (const node of nodes) {
-        if (node.type === NodeType.Splitter) {
-            tickSplitter(node)
-        }
+    // 4. Process Splitter nodes (must run after all other nodes have ticked).
+    for (const node of splitters) {
+        tickSplitter(node)
     }
 
     // 5. Cache speed factors for the renderer and advance tick counter.
