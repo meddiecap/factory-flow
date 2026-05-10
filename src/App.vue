@@ -180,20 +180,20 @@ function restart(): void {
 </script>
 
 <template>
-  <div class="flex h-screen w-screen flex-col overflow-hidden bg-gray-900">
+  <div class="relative flex h-screen w-screen flex-col overflow-hidden bg-gray-900">
     <!-- Top HUD bar -->
     <HudBar />
 
-    <!-- Main area: palette | canvas | detail panel -->
-    <div class="flex min-h-0 flex-1 overflow-hidden">
-      <!-- Left palette sidebar -->
-      <PalettePanel />
-
+    <!-- Main area: canvas fills all remaining space -->
+    <div class="relative min-h-0 flex-1 overflow-hidden">
       <!-- Canvas container – Konva mounts inside this div, fills remaining space -->
-      <div id="game-canvas" class="flex-1 min-w-0 overflow-hidden" />
+      <div id="game-canvas" class="h-full w-full" />
 
       <!-- Right detail panel (only visible when a node is selected) -->
       <DetailPanel :node-id="selectedNodeId" @close="selectedNodeId = null" @delete-node="deleteSelectedNode" />
+
+      <!-- Bottom palette: category buttons + building tray, centered overlay -->
+      <PalettePanel />
     </div>
 
     <!-- Win screen overlay (shown when a Rocket has been assembled) -->

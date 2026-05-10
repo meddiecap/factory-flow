@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { NodeType } from '../simulation/types'
 import { NODE_DEFS } from '../simulation/recipes'
 import { canUnlock, buildCost } from '../simulation/economy'
@@ -10,13 +10,16 @@ import { gameState, countNodes } from '../simulation/useGameState'
  * Mirrors the tech tree order from section 7.1.
  */
 const PALETTE_GROUPS: { label: string; types: NodeType[] }[] = [
-    { label: 'Layer 0 – Sources', types: [NodeType.IronMine, NodeType.CoalMine, NodeType.CopperMine, NodeType.SiliconMine] },
+    { label: 'Sources', types: [NodeType.IronMine, NodeType.CoalMine, NodeType.CopperMine, NodeType.SiliconMine] },
     { label: 'Energy', types: [NodeType.EnergySupply] },
-    { label: 'Layer 2 – Processing', types: [NodeType.Smelter, NodeType.CableFactory] },
-    { label: 'Layer 3 – Components', types: [NodeType.Foundry, NodeType.ChipFactory, NodeType.Electronics, NodeType.EngineFactory] },
-    { label: 'Layer 4/5 – Assembly', types: [NodeType.Assembly] },
+    { label: 'Processing', types: [NodeType.Smelter, NodeType.CableFactory] },
+    { label: 'Components', types: [NodeType.Foundry, NodeType.ChipFactory, NodeType.Electronics, NodeType.EngineFactory] },
+    { label: 'Assembly', types: [NodeType.Assembly] },
     { label: 'Utility', types: [NodeType.Splitter, NodeType.Warehouse, NodeType.Market] },
 ]
+
+/** Index of the currently open category, or null when the tray is closed. */
+const activeGroupIndex = ref<number | null>(null)
 
 /**
  * Computes display metadata for a single palette entry.
@@ -39,6 +42,11 @@ const groups = computed(() =>
     }))
 )
 
+/** Toggles the building tray for a category; closes it when clicking the active one. */
+function toggleGroup(index: number): void {
+    activeGroupIndex.value = activeGroupIndex.value === index ? null : index
+}
+
 /** Starts a native HTML drag carrying the node type string. */
 function onDragStart(event: DragEvent, type: NodeType): void {
     event.dataTransfer?.setData('text/x-node-type', type)
@@ -46,14 +54,12 @@ function onDragStart(event: DragEvent, type: NodeType): void {
 </script>
 
 <template>
-    <aside class="flex w-48 flex-col gap-2 overflow-y-auto bg-gray-800 p-2 text-xs text-gray-200">
-        <p class="font-bold text-gray-400">Palette</p>
-        <p class="text-gray-500">€{{ gameState.money }}</p>
-
-        <div v-for="group in groups" :key="group.label" class="flex flex-col gap-1">
-            <p class="mt-1 text-gray-500">{{ group.label }}</p>
-
-            <div v-for="entry in group.entries" :key="entry.type" class="rounded border px-2 py-1 transition-colors"
+    <!-- Building tray: horizontal row of buildings for the active category -->
+    <Transition name="tray">
+        <div v-if="activeGroupIndex !== null"
+            class="absolute bottom-14 left-1/2 -translate-x-1/2 flex gap-2 rounded-t-lg bg-gray-800 bg-opacity-95 px-4 py-2 shadow-lg">
+            <div v-for="entry in groups[activeGroupIndex].entries" :key="entry.type"
+                class="flex w-24 flex-col items-center rounded border px-2 py-1 text-xs text-gray-200 transition-colors"
                 :class="{
                     'cursor-grab border-blue-700 bg-gray-700 hover:bg-gray-600': entry.unlocked && entry.affordable,
                     'cursor-not-allowed border-gray-700 bg-gray-800 opacity-50': !entry.unlocked,
@@ -65,5 +71,29 @@ function onDragStart(event: DragEvent, type: NodeType): void {
                 <span v-else class="text-red-400">Locked</span>
             </div>
         </div>
-    </aside>
+    </Transition>
+
+    <!-- Category buttons bar -->
+    <div
+        class="absolute bottom-0 left-1/2 -translate-x-1/2 flex gap-1 rounded-t-lg bg-gray-800 bg-opacity-95 px-3 py-2 shadow-lg">
+        <button v-for="(group, index) in groups" :key="group.label"
+            class="rounded px-3 py-1 text-xs font-medium transition-colors" :class="activeGroupIndex === index
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'" @click="toggleGroup(index)">
+            {{ group.label }}
+        </button>
+    </div>
 </template>
+
+<style scoped>
+.tray-enter-active,
+.tray-leave-active {
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.tray-enter-from,
+.tray-leave-to {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px);
+}
+</style>
