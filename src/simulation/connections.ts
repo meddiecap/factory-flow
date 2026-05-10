@@ -14,6 +14,24 @@ export function filterEnergyConnections(
 }
 
 /**
+ * Builds a map of EnergySupply node id → number of outgoing energy connections.
+ * Used by the renderer and interaction layer to determine how many energy output dots
+ * an EnergySupply node should show.
+ *
+ * @param connections - The full connection list to scan.
+ * @returns A Map keyed by source node id with the count of energy connections from that node.
+ */
+export function buildEnergyOutputCounts(
+    connections: Connection[],
+): Map<string, number> {
+    const counts = new Map<string, number>()
+    for (const c of filterEnergyConnections(connections)) {
+        counts.set(c.fromNodeId, (counts.get(c.fromNodeId) ?? 0) + 1)
+    }
+    return counts
+}
+
+/**
  * Computes the visual flow status of a connection based on how full it is.
  * Used by the canvas renderer to colour connection lines.
  *

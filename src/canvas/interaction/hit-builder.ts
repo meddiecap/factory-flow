@@ -13,7 +13,7 @@ import {
 } from "../shared/geometry"
 import { energyInputDotPos } from "./geometry"
 import { DOT_HIT_RADIUS } from "./types"
-import { filterEnergyConnections } from "../../simulation/connections"
+import { buildEnergyOutputCounts } from "../../simulation/connections"
 
 /**
  * Callbacks fired by hit shapes created in buildDotHitShapes.
@@ -95,13 +95,7 @@ export function buildDotHitShapes(
     }
 
     // Pre-build energyOutputCounts so the dot loop below is O(n) instead of O(n²).
-    const energyOutputCounts = new Map<string, number>()
-    for (const c of filterEnergyConnections(state.connections)) {
-        energyOutputCounts.set(
-            c.fromNodeId,
-            (energyOutputCounts.get(c.fromNodeId) ?? 0) + 1,
-        )
-    }
+    const energyOutputCounts = buildEnergyOutputCounts(state.connections)
 
     // Pass 2: dot circles (on top of body rects so they get priority for mousedown).
     for (const node of state.nodes) {
