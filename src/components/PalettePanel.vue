@@ -94,11 +94,13 @@ function onDragStart(event: DragEvent, type: NodeType): void {
 
 <template>
     <!-- Anchored to bottom-center; tray grows upward naturally above the bar -->
-    <div class="absolute bottom-0 left-1/2 -translate-x-1/2 flex flex-col items-center">
+    <!-- pointer-events-none on the wrapper so the transparent area never blocks canvas clicks -->
+    <div class="absolute bottom-0 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none">
 
         <!-- Building tray: horizontal row of buildings for the active category -->
         <Transition name="tray">
-            <div v-if="activeGroupIndex !== null" class="flex gap-3 rounded-t-xl px-5 py-4 shadow-2xl"
+            <div v-if="activeGroupIndex !== null"
+                class="pointer-events-auto flex gap-3 rounded-t-xl px-5 py-4 shadow-2xl"
                 style="background: #0f172a; border: 1px solid #1e293b; border-bottom: none">
                 <div v-for="entry in groups[activeGroupIndex].entries" :key="entry.type"
                     class="relative flex w-32 flex-col overflow-hidden rounded-xl border transition-all duration-200"
@@ -119,7 +121,7 @@ function onDragStart(event: DragEvent, type: NodeType): void {
                     <!-- Card body -->
                     <div class="flex flex-1 flex-col gap-1 px-3 py-2">
                         <span class="block text-xs font-bold leading-tight text-gray-100">{{ entry.def.displayName
-                            }}</span>
+                        }}</span>
 
                         <!-- Status row -->
                         <div class="mt-1">
@@ -150,7 +152,7 @@ function onDragStart(event: DragEvent, type: NodeType): void {
         </Transition>
 
         <!-- Category buttons bar -->
-        <div class="flex gap-2 rounded-t-lg px-4 py-2 shadow-xl" style="background:#0f172a">
+        <div class="pointer-events-auto flex gap-2 rounded-t-lg px-4 py-2 shadow-xl" style="background:#0f172a">
             <button v-for="(group, index) in groups" :key="group.label"
                 class="relative flex w-20 flex-col items-center gap-1.5 overflow-hidden rounded-xl border px-3 py-3 text-xs font-semibold transition-all duration-200 hover:scale-105 active:scale-95"
                 :class="activeGroupIndex === index ? 'text-white' : 'text-gray-400 hover:text-gray-100'" :style="activeGroupIndex === index

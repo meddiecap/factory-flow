@@ -159,175 +159,195 @@ function bufferColour(amount: number, capacity: number): string {
 </script>
 
 <template>
-    <!-- Hidden when no node is selected -->
-    <aside v-if="node && def" class="flex w-56 flex-col gap-3 overflow-y-auto bg-gray-800 p-3 text-xs text-gray-200">
-        <!-- Header: name + close button -->
-        <div class="flex items-center justify-between">
-            <div>
-                <p class="font-bold text-white">{{ def.displayName }}</p>
-                <span class="mt-0.5 inline-block rounded px-1.5 py-0.5 text-[10px] font-medium text-white"
-                    :class="statusClass">
-                    {{ node.status }}
-                </span>
-            </div>
-            <div class="ml-2 flex flex-col gap-1">
-                <button class="rounded p-1 text-gray-400 hover:bg-gray-700 hover:text-white" title="Close"
-                    @click="emit('close')">
-                    ✕
-                </button>
-                <button class="rounded p-1 text-red-500 hover:bg-red-900 hover:text-red-300"
-                    title="Delete node (no refund)" @click="emit('deleteNode')">
-                    🗑
-                </button>
-            </div>
-        </div>
+    <!-- Positioning wrapper: keeps the dialog vertically centered without interfering with the transition -->
+    <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+        <Transition name="panel">
+            <aside v-if="node && def"
+                class="pointer-events-auto flex max-h-[80vh] w-60 flex-col gap-3 overflow-y-auto rounded-2xl border border-gray-700 bg-gray-900 bg-opacity-95 p-4 text-xs text-gray-200 shadow-2xl backdrop-blur-sm">
+                <!-- Header: name + close button -->
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="font-bold text-white">{{ def.displayName }}</p>
+                        <span class="mt-0.5 inline-block rounded px-1.5 py-0.5 text-[10px] font-medium text-white"
+                            :class="statusClass">
+                            {{ node.status }}
+                        </span>
+                    </div>
+                    <div class="ml-2 flex flex-col gap-1">
+                        <button class="rounded p-1 text-gray-400 hover:bg-gray-700 hover:text-white" title="Close"
+                            @click="emit('close')">
+                            ✕
+                        </button>
+                        <button class="rounded p-1 text-red-500 hover:bg-red-900 hover:text-red-300"
+                            title="Delete node (no refund)" @click="emit('deleteNode')">
+                            🗑
+                        </button>
+                    </div>
+                </div>
 
-        <!-- Cycle progress bar (only for nodes with a cycle) -->
-        <div v-if="def.cycleDuration > 0">
-            <p class="mb-1 text-gray-400">Cycle progress</p>
-            <div class="h-2 w-full overflow-hidden rounded bg-gray-700">
-                <div class="h-full bg-blue-500 transition-all"
-                    :style="{ width: (progressFraction * 100).toFixed(1) + '%' }" />
-            </div>
-            <p class="mt-0.5 text-right text-gray-500">
-                {{ node.progress.toFixed(1) }} / {{ def.cycleDuration }}
-            </p>
-        </div>
+                <!-- Cycle progress bar (only for nodes with a cycle) -->
+                <div v-if="def.cycleDuration > 0">
+                    <p class="mb-1 text-gray-400">Cycle progress</p>
+                    <div class="h-2 w-full overflow-hidden rounded bg-gray-700">
+                        <div class="h-full bg-blue-500 transition-all"
+                            :style="{ width: (progressFraction * 100).toFixed(1) + '%' }" />
+                    </div>
+                    <p class="mt-0.5 text-right text-gray-500">
+                        {{ node.progress.toFixed(1) }} / {{ def.cycleDuration }}
+                    </p>
+                </div>
 
-        <!-- Input buffers -->
-        <div v-if="node.inputBuffers.length > 0">
-            <p class="mb-1 text-gray-400">Input buffers</p>
-            <div v-for="(buf, i) in node.inputBuffers" :key="i" class="mb-1.5">
-                <div class="flex justify-between">
-                    <span>{{ buf.resource }}</span>
-                    <span class="tabular-nums text-gray-400">{{ buf.amount }}/{{ buf.capacity }}</span>
+                <!-- Input buffers -->
+                <div v-if="node.inputBuffers.length > 0">
+                    <p class="mb-1 text-gray-400">Input buffers</p>
+                    <div v-for="(buf, i) in node.inputBuffers" :key="i" class="mb-1.5">
+                        <div class="flex justify-between">
+                            <span>{{ buf.resource }}</span>
+                            <span class="tabular-nums text-gray-400">{{ buf.amount }}/{{ buf.capacity }}</span>
+                        </div>
+                        <div class="mt-0.5 h-1.5 w-full overflow-hidden rounded bg-gray-700">
+                            <div class="h-full transition-all" :class="bufferColour(buf.amount, buf.capacity)"
+                                :style="{ width: fillPct(buf.amount, buf.capacity) }" />
+                        </div>
+                        <!-- Market: show actual revenue per second for this slot -->
+                        <div v-if="isMarket" class="mt-0.5 flex justify-between text-[10px]">
+                            <span class="text-gray-500">Revenue</span>
+                            <span v-if="marketSlotRevenues[i] !== null && marketSlotRevenues[i]! > 0"
+                                class="text-yellow-400 tabular-nums">
+                                €{{ marketSlotRevenues[i]?.toLocaleString() }} /s
+                            </span>
+                            <span v-else-if="marketSlotRevenues[i] !== null" class="text-gray-600">€0 /s</span>
+                            <span v-else class="text-gray-600">—</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="mt-0.5 h-1.5 w-full overflow-hidden rounded bg-gray-700">
-                    <div class="h-full transition-all" :class="bufferColour(buf.amount, buf.capacity)"
-                        :style="{ width: fillPct(buf.amount, buf.capacity) }" />
-                </div>
-                <!-- Market: show actual revenue per second for this slot -->
-                <div v-if="isMarket" class="mt-0.5 flex justify-between text-[10px]">
-                    <span class="text-gray-500">Revenue</span>
-                    <span v-if="marketSlotRevenues[i] !== null && marketSlotRevenues[i]! > 0"
-                        class="text-yellow-400 tabular-nums">
-                        €{{ marketSlotRevenues[i]?.toLocaleString() }} /s
-                    </span>
-                    <span v-else-if="marketSlotRevenues[i] !== null" class="text-gray-600">€0 /s</span>
-                    <span v-else class="text-gray-600">—</span>
-                </div>
-            </div>
-        </div>
 
-        <!-- Output buffers -->
-        <div v-if="node.outputBuffers.length > 0">
-            <p class="mb-1 text-gray-400">Output buffers</p>
-            <div v-for="(buf, i) in node.outputBuffers" :key="i" class="mb-1.5">
-                <div class="flex justify-between">
-                    <span>{{ buf.resource }}</span>
-                    <span class="tabular-nums text-gray-400">{{ buf.amount }}/{{ buf.capacity }}</span>
+                <!-- Output buffers -->
+                <div v-if="node.outputBuffers.length > 0">
+                    <p class="mb-1 text-gray-400">Output buffers</p>
+                    <div v-for="(buf, i) in node.outputBuffers" :key="i" class="mb-1.5">
+                        <div class="flex justify-between">
+                            <span>{{ buf.resource }}</span>
+                            <span class="tabular-nums text-gray-400">{{ buf.amount }}/{{ buf.capacity }}</span>
+                        </div>
+                        <div class="mt-0.5 h-1.5 w-full overflow-hidden rounded bg-gray-700">
+                            <div class="h-full transition-all" :class="bufferColour(buf.amount, buf.capacity)"
+                                :style="{ width: fillPct(buf.amount, buf.capacity) }" />
+                        </div>
+                    </div>
                 </div>
-                <div class="mt-0.5 h-1.5 w-full overflow-hidden rounded bg-gray-700">
-                    <div class="h-full transition-all" :class="bufferColour(buf.amount, buf.capacity)"
-                        :style="{ width: fillPct(buf.amount, buf.capacity) }" />
-                </div>
-            </div>
-        </div>
 
-        <!-- Upgrades section -->
-        <div class="border-t border-gray-700 pt-2">
-            <p class="mb-2 font-medium text-gray-400">Upgrades</p>
+                <!-- Upgrades section -->
+                <div class="border-t border-gray-700 pt-2">
+                    <p class="mb-2 font-medium text-gray-400">Upgrades</p>
 
-            <!-- Speed upgrade -->
-            <div v-if="hasSpeedUpgrade" class="mb-1.5 flex items-center justify-between gap-2">
-                <div>
-                    <span>Speed</span>
-                    <span class="ml-1 text-gray-500">Lv{{ node.speedUpgradeLevel }}</span>
-                </div>
-                <button class="rounded px-2 py-0.5 font-medium transition-colors" :class="canAfford(speedUpgradeCost)
-                    ? 'bg-blue-700 hover:bg-blue-600 text-white cursor-pointer'
-                    : 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-60'
-                    " :disabled="!canAfford(speedUpgradeCost)" title="Upgrade production speed (×1.5 per level)"
-                    @click="buyUpgrade('speed')">
-                    €{{ speedUpgradeCost }}
-                </button>
-            </div>
+                    <!-- Speed upgrade -->
+                    <div v-if="hasSpeedUpgrade" class="mb-1.5 flex items-center justify-between gap-2">
+                        <div>
+                            <span>Speed</span>
+                            <span class="ml-1 text-gray-500">Lv{{ node.speedUpgradeLevel }}</span>
+                        </div>
+                        <button class="rounded px-2 py-0.5 font-medium transition-colors" :class="canAfford(speedUpgradeCost)
+                            ? 'bg-blue-700 hover:bg-blue-600 text-white cursor-pointer'
+                            : 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-60'
+                            " :disabled="!canAfford(speedUpgradeCost)" title="Upgrade production speed (×1.5 per level)"
+                            @click="buyUpgrade('speed')">
+                            €{{ speedUpgradeCost }}
+                        </button>
+                    </div>
 
-            <!-- Buffer upgrade (not for EnergySupply: it has no buffers) -->
-            <div v-if="!isEnergySupply" class="mb-1.5 flex items-center justify-between gap-2">
-                <div>
-                    <span>Buffer</span>
-                    <span class="ml-1 text-gray-500">Lv{{ node.bufferUpgradeLevel }}</span>
-                </div>
-                <button class="rounded px-2 py-0.5 font-medium transition-colors" :class="canAfford(bufferUpgradeCost)
-                    ? 'bg-blue-700 hover:bg-blue-600 text-white cursor-pointer'
-                    : 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-60'
-                    " :disabled="!canAfford(bufferUpgradeCost)"
-                    title="Increase input and output buffer capacity (+10 per level)" @click="buyUpgrade('buffer')">
-                    €{{ bufferUpgradeCost }}
-                </button>
-            </div>
+                    <!-- Buffer upgrade (not for EnergySupply: it has no buffers) -->
+                    <div v-if="!isEnergySupply" class="mb-1.5 flex items-center justify-between gap-2">
+                        <div>
+                            <span>Buffer</span>
+                            <span class="ml-1 text-gray-500">Lv{{ node.bufferUpgradeLevel }}</span>
+                        </div>
+                        <button class="rounded px-2 py-0.5 font-medium transition-colors" :class="canAfford(bufferUpgradeCost)
+                            ? 'bg-blue-700 hover:bg-blue-600 text-white cursor-pointer'
+                            : 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-60'
+                            " :disabled="!canAfford(bufferUpgradeCost)"
+                            title="Increase input and output buffer capacity (+10 per level)"
+                            @click="buyUpgrade('buffer')">
+                            €{{ bufferUpgradeCost }}
+                        </button>
+                    </div>
 
-            <!-- Efficiency upgrade (nodes with inputs only) -->
-            <div v-if="hasEfficiencyUpgrade" class="mb-1.5 flex items-center justify-between gap-2">
-                <div>
-                    <span>Efficiency</span>
-                    <span class="ml-1 text-gray-500">Lv{{ node.efficiencyUpgradeLevel }}</span>
-                </div>
-                <button class="rounded px-2 py-0.5 font-medium transition-colors" :class="canAfford(efficiencyUpgradeCost)
-                    ? 'bg-blue-700 hover:bg-blue-600 text-white cursor-pointer'
-                    : 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-60'
-                    " :disabled="!canAfford(efficiencyUpgradeCost)"
-                    title="Reduce input resource consumption (−10% per level, min 50%)"
-                    @click="buyUpgrade('efficiency')">
-                    €{{ efficiencyUpgradeCost }}
-                </button>
-            </div>
+                    <!-- Efficiency upgrade (nodes with inputs only) -->
+                    <div v-if="hasEfficiencyUpgrade" class="mb-1.5 flex items-center justify-between gap-2">
+                        <div>
+                            <span>Efficiency</span>
+                            <span class="ml-1 text-gray-500">Lv{{ node.efficiencyUpgradeLevel }}</span>
+                        </div>
+                        <button class="rounded px-2 py-0.5 font-medium transition-colors" :class="canAfford(efficiencyUpgradeCost)
+                            ? 'bg-blue-700 hover:bg-blue-600 text-white cursor-pointer'
+                            : 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-60'
+                            " :disabled="!canAfford(efficiencyUpgradeCost)"
+                            title="Reduce input resource consumption (−10% per level, min 50%)"
+                            @click="buyUpgrade('efficiency')">
+                            €{{ efficiencyUpgradeCost }}
+                        </button>
+                    </div>
 
-            <!-- Energy efficiency upgrade (fuel-consuming nodes only) -->
-            <div v-if="hasEnergyEfficiencyUpgrade" class="mb-1.5 flex items-center justify-between gap-2">
-                <div>
-                    <span>Energy Eff.</span>
-                    <span class="ml-1 text-gray-500">Lv{{ node.energyEfficiencyUpgradeLevel }}</span>
-                </div>
-                <button class="rounded px-2 py-0.5 font-medium transition-colors" :class="canAfford(energyEfficiencyUpgradeCost)
-                    ? 'bg-blue-700 hover:bg-blue-600 text-white cursor-pointer'
-                    : 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-60'
-                    " :disabled="!canAfford(energyEfficiencyUpgradeCost)"
-                    title="Reduce fuel consumption (−10% per level, min 50%)" @click="buyUpgrade('energyEfficiency')">
-                    €{{ energyEfficiencyUpgradeCost }}
-                </button>
-            </div>
+                    <!-- Energy efficiency upgrade (fuel-consuming nodes only) -->
+                    <div v-if="hasEnergyEfficiencyUpgrade" class="mb-1.5 flex items-center justify-between gap-2">
+                        <div>
+                            <span>Energy Eff.</span>
+                            <span class="ml-1 text-gray-500">Lv{{ node.energyEfficiencyUpgradeLevel }}</span>
+                        </div>
+                        <button class="rounded px-2 py-0.5 font-medium transition-colors" :class="canAfford(energyEfficiencyUpgradeCost)
+                            ? 'bg-blue-700 hover:bg-blue-600 text-white cursor-pointer'
+                            : 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-60'
+                            " :disabled="!canAfford(energyEfficiencyUpgradeCost)"
+                            title="Reduce fuel consumption (−10% per level, min 50%)"
+                            @click="buyUpgrade('energyEfficiency')">
+                            €{{ energyEfficiencyUpgradeCost }}
+                        </button>
+                    </div>
 
-            <!-- Energy Supply: energy output upgrade -->
-            <div v-if="isEnergySupply" class="mb-1.5 flex items-center justify-between gap-2">
-                <div>
-                    <span>Energy Output</span>
-                    <span class="ml-1 text-gray-500">+{{ node.energyOutputUpgradeLevel ?? 0 }} ⚡/tick</span>
-                </div>
-                <button class="rounded px-2 py-0.5 font-medium transition-colors" :class="canAfford(energyOutputUpgradeCost)
-                    ? 'bg-yellow-600 hover:bg-yellow-500 text-white cursor-pointer'
-                    : 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-60'
-                    " :disabled="!canAfford(energyOutputUpgradeCost)" title="Increase energy output by +1.0 per tick"
-                    @click="buyUpgrade('energyOutput')">
-                    €{{ energyOutputUpgradeCost }}
-                </button>
-            </div>
+                    <!-- Energy Supply: energy output upgrade -->
+                    <div v-if="isEnergySupply" class="mb-1.5 flex items-center justify-between gap-2">
+                        <div>
+                            <span>Energy Output</span>
+                            <span class="ml-1 text-gray-500">+{{ node.energyOutputUpgradeLevel ?? 0 }} ⚡/tick</span>
+                        </div>
+                        <button class="rounded px-2 py-0.5 font-medium transition-colors" :class="canAfford(energyOutputUpgradeCost)
+                            ? 'bg-yellow-600 hover:bg-yellow-500 text-white cursor-pointer'
+                            : 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-60'
+                            " :disabled="!canAfford(energyOutputUpgradeCost)"
+                            title="Increase energy output by +1.0 per tick" @click="buyUpgrade('energyOutput')">
+                            €{{ energyOutputUpgradeCost }}
+                        </button>
+                    </div>
 
-            <!-- Market: sales-point upgrade -->
-            <div v-if="isMarket" class="mb-1.5 flex items-center justify-between gap-2">
-                <div>
-                    <span>Sales Points</span>
-                    <span class="ml-1 text-gray-500">×{{ node.salesPoints ?? 1 }}</span>
+                    <!-- Market: sales-point upgrade -->
+                    <div v-if="isMarket" class="mb-1.5 flex items-center justify-between gap-2">
+                        <div>
+                            <span>Sales Points</span>
+                            <span class="ml-1 text-gray-500">×{{ node.salesPoints ?? 1 }}</span>
+                        </div>
+                        <button class="rounded px-2 py-0.5 font-medium transition-colors" :class="canAfford(salesPointCost)
+                            ? 'bg-blue-700 hover:bg-blue-600 text-white cursor-pointer'
+                            : 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-60'
+                            " :disabled="!canAfford(salesPointCost)"
+                            title="Add an extra sales point (+20 units/tick sell capacity)" @click="buySalesPoint()">
+                            €{{ salesPointCost }}
+                        </button>
+                    </div>
                 </div>
-                <button class="rounded px-2 py-0.5 font-medium transition-colors" :class="canAfford(salesPointCost)
-                    ? 'bg-blue-700 hover:bg-blue-600 text-white cursor-pointer'
-                    : 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-60'
-                    " :disabled="!canAfford(salesPointCost)"
-                    title="Add an extra sales point (+20 units/tick sell capacity)" @click="buySalesPoint()">
-                    €{{ salesPointCost }}
-                </button>
-            </div>
-        </div>
-    </aside>
+            </aside>
+        </Transition>
+    </div>
 </template>
+
+<style scoped>
+.panel-enter-active,
+.panel-leave-active {
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.panel-enter-from,
+.panel-leave-to {
+    opacity: 0;
+    transform: translateX(16px);
+}
+</style>
