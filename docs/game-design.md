@@ -56,9 +56,8 @@ Elke node is een rechthoekig venster op het canvas met:
 
 - Het canvas is een **2D-grid**: fabrieken nemen één of meer celvakken in beslag en snappen automatisch in op de dichtstbijzijnde cel
 - Geen pixelprecieze plaatsing vereist — de speler sleept een fabriek naar een cel en laat los
-- Het grid is **eindig maar uitbreidbaar** (koop meer rijen/kolommen met geld; er is geen hard maximum)
-- **Startgrootte**: 20 kolommen × 12 rijen
-- **Uitbreidingskosten**: `€200 × 1.5^n` per rij of kolom, waarbij n het totaal aantal reeds gekochte uitbreidingen is (1e uitbreiding: €200, 2e: €300, 3e: €450, …)
+- Het grid is **oneindig** in alle richtingen — er is geen startgrootte of maximumgrens; de speler kan altijd verder bouwen
+- Navigatie via **zoomen en pannen**; zie [infinite-canvas.md](infinite-canvas.md) voor het volledige ontwerp
 - Lijnen lopen langs de randen van gridcellen; kruisingen zijn toegestaan maar visueel onderscheiden
 - **Node Groups**: meerdere nodes bundelen in één inklapbare container
 
@@ -161,7 +160,7 @@ De basisproductiesnelheid is bewust laag gehouden zodat het vroege spel uitdagen
 ### 5.1 Geld
 
 - Verkregen door goederen te **verkopen via de Markt-node**
-- Geld wordt gebruikt voor: nieuwe fabrieken, upgrades, canvas-uitbreiding, tech tree
+- Geld wordt gebruikt voor: nieuwe fabrieken, upgrades, tech tree
 
 ### 5.2 Marktprijzen
 
@@ -331,11 +330,12 @@ Een aparte uitdagingsmodus met een tijdslimiet per run. Geen effect op het hoofd
 
 ## 9. UI/UX Overwegingen
 
-- **Minimap** voor grote canvassen
+- **Minimap** (rechtsonder in het canvas-venster) — geeft een vogelvluchtoverzicht van alle nodes; klikbaar om snel te navigeren; in/uitklapbaar met `M`
+- **Zoomen & pannen** op het canvas — scrollwiel, middelste muisknop, spatiebalk+sleep, pijltjestoetsen; zie [infinite-canvas.md](infinite-canvas.md)
+- **Fit to view** (`F`) — centreert en zoomt zodat alle nodes zichtbaar zijn
 - **Bottleneck-highlighting**: klik op een fabriek om de volledige keten te markeren
 - **Statistieken per node**: gemiddelde throughput, uptime %, kosten/baten
 - **Undo/redo** voor plaatsings- en verbindingsacties
-- **Zoomen & pannen** op het canvas
 - Inklapbare **Node Groups** voor organisatie van complexe subsystemen
 - **Markt-verkooppunten indicator**: in de NodeDetail-panel van een Markt-node staat per verkooppunt (per aangesloten invoer-dot) welke resource er doorheen loopt en hoeveel dat op dit moment per seconde oplevert (berekend als gemiddelde over de laatste seconde)
 
@@ -367,7 +367,6 @@ De interface bestaat uit drie vaste zones:
 | Tech tree openen  | Fullscreen modal, sluitbaar met Escape of kruisknop                          |
 | Winscherm         | Fullscreen overlay na assemblage Raket; toont eindtijd, optie om te resetten |
 | Schematic opslaan | Modal: naam invoeren, bevestigen                                             |
-| Canvas uitbreiden | Knop in HUD-balk (boven canvas); toont kosten vóór bevestiging               |
 
 ---
 
