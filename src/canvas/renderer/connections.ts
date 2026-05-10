@@ -45,11 +45,13 @@ export function drawManhattanLine(
  * @param layer - The Konva layer to draw onto.
  * @param connections - All active connections in the game state.
  * @param nodeMap - Map of node id → NodeInstance for fast lookup.
+ * @param energyOutputCounts - Pre-built map of EnergySupply node id → number of outgoing energy connections.
  */
 export function drawConnections(
     layer: Konva.Layer,
     connections: Connection[],
     nodeMap: Map<string, NodeInstance>,
+    energyOutputCounts: Map<string, number>,
 ): void {
     for (const conn of connections) {
         const src = nodeMap.get(conn.fromNodeId)
@@ -59,9 +61,8 @@ export function drawConnections(
         let x1: number, y1: number, x2: number, y2: number
 
         if (conn.isEnergy) {
-            const energyCount = connections.filter(
-                (c) => c.isEnergy && c.fromNodeId === src.id,
-            ).length
+            // O(1): count was pre-computed before this loop.
+            const energyCount = energyOutputCounts.get(src.id) ?? 0
             const totalDots = energyCount + 1
             ;[x1, y1] = energyOutputDotPos(src, conn.fromDotIndex, totalDots)
             ;[x2, y2] = inputDotPos(tgt, NODE_DEFS[tgt.type].inputs.length)

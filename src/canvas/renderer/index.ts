@@ -82,7 +82,15 @@ export class CanvasRenderer {
         const nodeMap = new Map<string, NodeInstance>()
         for (const node of state.nodes) nodeMap.set(node.id, node)
 
-        drawConnections(this.connectionLayer, state.connections, nodeMap)
+        // Pre-build energyOutputCounts once so neither drawConnections nor the
+        // node loop has to filter all connections per node (O(n) instead of O(n²)).
+        const energyOutputCounts = new Map<string, number>()
+        for (const c of state.connections) {
+            if (!c.isEnergy) continue
+            energyOutputCounts.set(c.fromNodeId, (energyOutputCounts.get(c.fromNodeId) ?? 0) + 1)
+        }
+
+        drawConnections(this.connectionLayer, state.connections, nodeMap, energyOutputCounts)
 
         const speedFactors = calcNodeSpeedFactors(
             state.nodes,
@@ -93,9 +101,7 @@ export class CanvasRenderer {
         for (const node of state.nodes) {
             const energyOutputCount =
                 node.type === NodeType.EnergySupply
-                    ? state.connections.filter(
-                          (c) => c.isEnergy && c.fromNodeId === node.id,
-                      ).length
+                    ? (energyOutputCounts.get(node.id) ?? 0)
                     : 0
             const slotRevenues =
                 node.type === NodeType.Market
