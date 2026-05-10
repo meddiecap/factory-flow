@@ -57,7 +57,8 @@ export function tick(state: GameState): void {
         }
     }
 
-    // 5. Advance tick counter.
+    // 5. Cache speed factors for the renderer and advance tick counter.
+    state.lastSpeedFactors = speedFactors
     state.tick++
 }
 

@@ -112,11 +112,11 @@ export class CanvasRenderer {
             energyOutputCounts,
         )
 
-        const speedFactors = calcNodeSpeedFactors(
-            state.nodes,
-            state.connections,
-            NODE_DEFS,
-        )
+        // Reuse the speed factors computed by the last tick; fall back to recalculating
+        // only on the very first render before tick() has run.
+        const speedFactors =
+            state.lastSpeedFactors ??
+            calcNodeSpeedFactors(state.nodes, state.connections, NODE_DEFS)
 
         for (const node of state.nodes) {
             const energyOutputCount =
