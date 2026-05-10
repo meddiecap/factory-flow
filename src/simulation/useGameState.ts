@@ -143,16 +143,22 @@ export const gameState = reactive<GameState>({
     money: 0,
     totalEarned: 0,
     tick: 0,
+    nodeTypeCounts: {
+        [ironMineStart.type]: 1,
+        [energySupplyStart.type]: 1,
+        [marketStart.type]: 1,
+    },
 })
 
 /**
  * Returns how many nodes of `type` are currently on the canvas.
  * Used to calculate the escalating build cost for the next placement.
+ * Reads the maintained `nodeTypeCounts` map for O(1) access instead of scanning all nodes.
  *
  * @param type - The NodeType to count.
  */
 export function countNodes(type: NodeType): number {
-    return gameState.nodes.filter((n) => n.type === type).length
+    return gameState.nodeTypeCounts?.[type] ?? 0
 }
 
 /**
@@ -192,6 +198,8 @@ export function placeNode(type: NodeType, col: number, row: number): boolean {
 
     const node = createNodeInstance(newNodeId(), type, clampedCol, clampedRow)
     gameState.nodes.push(node)
+    const counts = gameState.nodeTypeCounts ?? (gameState.nodeTypeCounts = {})
+    counts[type] = (counts[type] ?? 0) + 1
     gameState.money -= cost
     return true
 }

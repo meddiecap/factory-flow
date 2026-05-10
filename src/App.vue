@@ -59,6 +59,10 @@ onMounted(() => {
   const saved = loadState()
   if (saved !== null) {
     Object.assign(gameState, saved)
+    // Rebuild nodeTypeCounts from the loaded nodes in case the save predates this field.
+    const counts: Partial<Record<string, number>> = {}
+    for (const n of gameState.nodes) counts[n.type] = (counts[n.type] ?? 0) + 1
+    gameState.nodeTypeCounts = counts
     initSequences(saved)
   }
 

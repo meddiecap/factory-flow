@@ -41,6 +41,12 @@ export interface GameState {
     /** Number of simulation ticks elapsed since the run started. */
     tick: number
     /**
+     * Number of placed nodes per NodeType, maintained incrementally to avoid
+     * O(n) `.filter()` scans every time the palette or build-cost logic reads the count.
+     * Derived from `nodes` — not authoritative independently.
+     */
+    nodeTypeCounts?: Partial<Record<string, number>>
+    /**
      * Transfer events from the most recent tick, used by the renderer to spawn
      * particle animations. Not persisted to localStorage.
      */
