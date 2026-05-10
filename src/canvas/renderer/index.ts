@@ -6,6 +6,7 @@ import type {
 } from "../../simulation/types"
 import { NodeType } from "../../simulation/types"
 import type { TransferEvent } from "../../simulation/connections"
+import { filterEnergyConnections } from "../../simulation/connections"
 import { calcNodeSpeedFactors } from "../../simulation/energy"
 import { lastSpeedFactors } from "../../simulation/simulator"
 import { calcMarketSlotRevenues } from "../../simulation/throughput"
@@ -98,8 +99,7 @@ export class CanvasRenderer {
         // Pre-build energyOutputCounts once so neither drawConnections nor the
         // node loop has to filter all connections per node (O(n) instead of O(n²)).
         const energyOutputCounts = new Map<string, number>()
-        for (const c of state.connections) {
-            if (!c.isEnergy) continue
+        for (const c of filterEnergyConnections(state.connections)) {
             energyOutputCounts.set(
                 c.fromNodeId,
                 (energyOutputCounts.get(c.fromNodeId) ?? 0) + 1,
@@ -118,7 +118,11 @@ export class CanvasRenderer {
         const speedFactors =
             lastSpeedFactors.size > 0
                 ? lastSpeedFactors
-                : calcNodeSpeedFactors(state.nodes, state.connections, NODE_DEFS)
+                : calcNodeSpeedFactors(
+                      state.nodes,
+                      state.connections,
+                      NODE_DEFS,
+                  )
 
         for (const node of state.nodes) {
             const energyOutputCount =

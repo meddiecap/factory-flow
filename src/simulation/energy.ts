@@ -1,6 +1,7 @@
 import { NodeType } from "./types"
 import type { NodeInstance, NodeDef, Connection } from "./types"
 import { effectiveFuelPerTick } from "./tick"
+import { filterEnergyConnections } from "./connections"
 
 /**
  * Computes a per-node speed factor based on explicit energy connections.
@@ -34,8 +35,7 @@ export function calcNodeSpeedFactors(
     // energyBySupply: fromNodeId → all Connections leaving that supply.
     const energyByTarget = new Map<string, Connection>()
     const energyBySupply = new Map<string, Connection[]>()
-    for (const c of connections) {
-        if (!c.isEnergy) continue
+    for (const c of filterEnergyConnections(connections)) {
         energyByTarget.set(c.toNodeId, c)
         const list = energyBySupply.get(c.fromNodeId) ?? []
         list.push(c)

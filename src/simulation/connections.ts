@@ -1,6 +1,19 @@
 import type { NodeInstance, Connection, ResourceType } from "./types"
 
 /**
+ * Returns only the energy connections from a connection list.
+ * Centralises the `c.isEnergy` filter so callers don't repeat the predicate.
+ *
+ * @param connections - The full connection list to filter.
+ * @returns A new array containing only connections where `isEnergy` is true.
+ */
+export function filterEnergyConnections(
+    connections: Connection[],
+): Connection[] {
+    return connections.filter((c) => c.isEnergy === true)
+}
+
+/**
  * Computes the visual flow status of a connection based on how full it is.
  * Used by the canvas renderer to colour connection lines.
  *
