@@ -222,6 +222,33 @@ export function moveNode(nodeId: string, col: number, row: number): void {
 }
 
 /**
+ * Removes a node by id, along with all connections that reference it.
+ * No refund is given. No-ops when the node does not exist.
+ *
+ * @param nodeId - Id of the node to remove.
+ */
+export function removeNode(nodeId: string): void {
+    const idx = gameState.nodes.findIndex((n) => n.id === nodeId)
+    if (idx === -1) return
+    const node = gameState.nodes[idx]
+
+    // Remove every connection that involves this node.
+    const connIds = gameState.connections
+        .filter((c) => c.fromNodeId === nodeId || c.toNodeId === nodeId)
+        .map((c) => c.id)
+    for (const id of connIds) removeConnection(id)
+
+    // Decrement the type-count map.
+    if (gameState.nodeTypeCounts) {
+        const count = gameState.nodeTypeCounts[node.type] ?? 0
+        if (count <= 1) delete gameState.nodeTypeCounts[node.type]
+        else gameState.nodeTypeCounts[node.type] = count - 1
+    }
+
+    gameState.nodes.splice(idx, 1)
+}
+
+/**
  * Removes a connection by id.
  * The goods flow through that connection stops immediately.
  *

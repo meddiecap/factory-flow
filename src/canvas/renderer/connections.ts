@@ -5,17 +5,63 @@ import {
     outputDotPos,
     energyOutputDotPos,
     inputDotPos,
+    CELL_SIZE,
 } from "../shared/geometry"
 import { CONNECTION_COLOR, ENERGY_DOT_COLOR } from "./constants"
 
+/** Pixel offset used when routing a backwards connection around node bodies. */
+const ROUTE_OFFSET = CELL_SIZE
+
+/**
+ * Computes the ordered waypoints for a Manhattan-routed connection between two pixel positions.
+ * Forward connections (x2 >= x1) use a 3-segment route through the horizontal midpoint.
+ * Backward connections (x2 < x1) use a 6-segment S-route: exit right, bend at vertical midpoint,
+ * enter the input dot from the left.
+ * Used by both the line renderer and the particle animation system.
+ *
+ * @param x1 - Start x (output dot).
+ * @param y1 - Start y.
+ * @param x2 - End x (input dot).
+ * @param y2 - End y.
+ * @returns Ordered [x, y] waypoints the route passes through.
+ */
+export function routeWaypoints(
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+): [number, number][] {
+    if (x2 >= x1) {
+        const midX = x1 + (x2 - x1) / 2
+        return [
+            [x1, y1],
+            [midX, y1],
+            [midX, y2],
+            [x2, y2],
+        ]
+    } else {
+        const exitX = x1 + ROUTE_OFFSET
+        const entryX = x2 - ROUTE_OFFSET
+        const midY = (y1 + y2) / 2
+        return [
+            [x1, y1],
+            [exitX, y1],
+            [exitX, midY],
+            [entryX, midY],
+            [entryX, y2],
+            [x2, y2],
+        ]
+    }
+}
+
 /**
  * Draws a Manhattan-routed polyline between two pixel positions.
- * The route goes: source → midpoint-x column → target. No diagonals.
+ * Delegates routing to routeWaypoints and renders the result as a Konva.Line.
  *
  * @param layer - The Konva layer to draw onto.
- * @param x1 - Start x.
+ * @param x1 - Start x (output dot, right edge of source node).
  * @param y1 - Start y.
- * @param x2 - End x.
+ * @param x2 - End x (input dot, left edge of target node).
  * @param y2 - End y.
  * @param color - Stroke colour (defaults to the standard connection grey).
  */
@@ -27,10 +73,11 @@ export function drawManhattanLine(
     y2: number,
     color: string = CONNECTION_COLOR,
 ): void {
-    const midX = x1 + (x2 - x1) / 2
+    const waypoints = routeWaypoints(x1, y1, x2, y2)
+    const points = waypoints.flat()
     layer.add(
         new Konva.Line({
-            points: [x1, y1, midX, y1, midX, y2, x2, y2],
+            points,
             stroke: color,
             strokeWidth: 2,
             lineJoin: "round",

@@ -22,7 +22,7 @@ import {
 } from "./constants"
 import { drawGrid } from "./grid"
 import { drawNode } from "./nodes"
-import { drawConnections } from "./connections"
+import { drawConnections, routeWaypoints } from "./connections"
 
 export { GRID_COLS, GRID_ROWS, CELL_SIZE }
 export { inputDotX } from "../shared/geometry"
@@ -126,6 +126,8 @@ export class CanvasRenderer {
             const slotRevenues =
                 node.type === NodeType.Market
                     ? calcMarketSlotRevenues(
+                          // TODO: pass nodeMap + connsByTarget as optional params to avoid
+                          // rebuilding them per Market node when multiple Markets are on the canvas.
                           node,
                           state.nodes,
                           state.connections,
@@ -177,14 +179,7 @@ export class CanvasRenderer {
 
             const [x1, y1] = outputDotPos(src, conn.fromDotIndex)
             const [x2, y2] = inputDotPos(tgt, conn.toDotIndex)
-            const midX = x1 + (x2 - x1) / 2
-
-            const waypoints: [number, number][] = [
-                [x1, y1],
-                [midX, y1],
-                [midX, y2],
-                [x2, y2],
-            ]
+            const waypoints = routeWaypoints(x1, y1, x2, y2)
 
             const color = RESOURCE_COLORS[ev.resource] ?? "#ffffff"
             const count = Math.min(ev.amount, MAX_PARTICLES_PER_TICK)

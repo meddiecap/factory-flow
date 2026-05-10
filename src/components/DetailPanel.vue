@@ -14,7 +14,8 @@ import { calcMarketSlotRevenues } from '../simulation/throughput'
 const props = defineProps<{ nodeId: string | null }>()
 
 /** Emitted when the user explicitly closes the panel. */
-const emit = defineEmits<{ close: [] }>()
+/** Emitted when the user deletes the selected node. */
+const emit = defineEmits<{ close: []; deleteNode: [] }>()
 
 // ── Derived data from selected node ─────────────────────────────────────────
 
@@ -169,10 +170,16 @@ function bufferColour(amount: number, capacity: number): string {
                     {{ node.status }}
                 </span>
             </div>
-            <button class="ml-2 rounded p-1 text-gray-400 hover:bg-gray-700 hover:text-white" title="Close"
-                @click="emit('close')">
-                ✕
-            </button>
+            <div class="ml-2 flex flex-col gap-1">
+                <button class="rounded p-1 text-gray-400 hover:bg-gray-700 hover:text-white" title="Close"
+                    @click="emit('close')">
+                    ✕
+                </button>
+                <button class="rounded p-1 text-red-500 hover:bg-red-900 hover:text-red-300"
+                    title="Delete node (no refund)" @click="emit('deleteNode')">
+                    🗑
+                </button>
+            </div>
         </div>
 
         <!-- Cycle progress bar (only for nodes with a cycle) -->
