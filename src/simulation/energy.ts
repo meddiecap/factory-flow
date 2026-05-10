@@ -25,7 +25,18 @@ export function calcNodeSpeedFactors(
     const nodeMap = new Map<string, NodeInstance>()
     for (const node of nodes) nodeMap.set(node.id, node)
 
-    const energyConns = connections.filter((c) => c.isEnergy === true)
+    // Build O(1) indexes from the energy connections so the node loop stays O(n).
+    // energyByTarget: toNodeId → the single Connection powering that factory.
+    // energyBySupply: fromNodeId → all Connections leaving that supply.
+    const energyByTarget = new Map<string, Connection>()
+    const energyBySupply = new Map<string, Connection[]>()
+    for (const c of connections) {
+        if (!c.isEnergy) continue
+        energyByTarget.set(c.toNodeId, c)
+        const list = energyBySupply.get(c.fromNodeId) ?? []
+        list.push(c)
+        energyBySupply.set(c.fromNodeId, list)
+    }
 
     for (const node of nodes) {
         const def = defs[node.type]
@@ -37,8 +48,8 @@ export function calcNodeSpeedFactors(
             continue
         }
 
-        // Find the single energy connection pointing to this factory.
-        const energyConn = energyConns.find((c) => c.toNodeId === node.id)
+        // O(1): look up the single energy connection pointing to this factory.
+        const energyConn = energyByTarget.get(node.id)
         if (energyConn === undefined) {
             // No energy connection → factory is completely stopped.
             result.set(node.id, 0)
@@ -56,10 +67,8 @@ export function calcNodeSpeedFactors(
             (supplyDef?.energyOutputPerTick ?? 0) +
             (supply.energyOutputUpgradeLevel ?? 0)
 
-        // Count how many factories this supply is feeding.
-        const connectedCount = energyConns.filter(
-            (c) => c.fromNodeId === supply.id,
-        ).length
+        // O(1): count how many factories this supply is feeding.
+        const connectedCount = energyBySupply.get(supply.id)?.length ?? 0
 
         if (connectedCount === 0 || energyOutputPerTick === 0) {
             result.set(node.id, 0)
