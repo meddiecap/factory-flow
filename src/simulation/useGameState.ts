@@ -274,6 +274,55 @@ function wouldCreateCycle(
 }
 
 /**
+ * Validates that a proposed connection between two endpoints is legal.
+ * Shared by addConnection and reconnectConnection to avoid duplicating rules.
+ *
+ * @param fromNode - Proposed source node.
+ * @param fromDotIndex - Output dot index on the source node.
+ * @param toNode - Proposed target node.
+ * @param toDotIndex - Input dot index on the target node.
+ * @param connections - The connection list to validate against (may exclude the reconnected edge).
+ * @param isEnergy - Whether this is an energy connection.
+ * @returns `true` when the endpoints are valid.
+ */
+function validateConnectionEndpoints(
+    fromNode: NodeInstance,
+    fromDotIndex: number,
+    toNode: NodeInstance,
+    toDotIndex: number,
+    connections: Connection[],
+    isEnergy: boolean,
+): boolean {
+    if (isEnergy) {
+        if (fromNode.type !== NodeType.EnergySupply) return false
+        const toDef = NODE_DEFS[toNode.type]
+        if (!toDef.hasEnergyInput) return false
+        if (toDotIndex !== toDef.inputs.length) return false
+        const alreadyPowered = connections.some(
+            (c) => c.isEnergy && c.toNodeId === toNode.id,
+        )
+        if (alreadyPowered) return false
+        const fromDotUsed = connections.some(
+            (c) =>
+                c.fromNodeId === fromNode.id && c.fromDotIndex === fromDotIndex,
+        )
+        if (fromDotUsed) return false
+    } else {
+        if (fromDotIndex >= fromNode.outputBuffers.length) return false
+        if (toDotIndex >= toNode.inputBuffers.length) return false
+        if (wouldCreateCycle(fromNode.id, toNode.id, connections)) return false
+        const dotConflict = connections.some(
+            (c) =>
+                (c.fromNodeId === fromNode.id &&
+                    c.fromDotIndex === fromDotIndex) ||
+                (c.toNodeId === toNode.id && c.toDotIndex === toDotIndex),
+        )
+        if (dotConflict) return false
+    }
+    return true
+}
+
+/**
  * Reconnects an existing connection to new endpoints.
  * The original connection is restored unchanged if validation fails:
  * - new endpoints have the same validity rules as addConnection
@@ -301,33 +350,17 @@ export function reconnectConnection(
     if (fromNode === undefined || toNode === undefined) return false
 
     const others = gameState.connections.filter((c) => c.id !== connectionId)
-
-    if (conn.isEnergy) {
-        // Energy connection: validate the same way as addConnection for energy.
-        if (fromNode.type !== NodeType.EnergySupply) return false
-        const toDef = NODE_DEFS[toNode.type]
-        if (!toDef.hasEnergyInput) return false
-        if (toDotIndex !== toDef.inputs.length) return false
-        const alreadyPowered = others.some(
-            (c) => c.isEnergy && c.toNodeId === toNodeId,
+    if (
+        !validateConnectionEndpoints(
+            fromNode,
+            fromDotIndex,
+            toNode,
+            toDotIndex,
+            others,
+            conn.isEnergy ?? false,
         )
-        if (alreadyPowered) return false
-        const fromDotUsed = others.some(
-            (c) =>
-                c.fromNodeId === fromNodeId && c.fromDotIndex === fromDotIndex,
-        )
-        if (fromDotUsed) return false
-    } else {
-        if (fromDotIndex >= fromNode.outputBuffers.length) return false
-        if (toDotIndex >= toNode.inputBuffers.length) return false
-        if (wouldCreateCycle(fromNodeId, toNodeId, others)) return false
-        const dotConflict = others.some(
-            (c) =>
-                (c.fromNodeId === fromNodeId &&
-                    c.fromDotIndex === fromDotIndex) ||
-                (c.toNodeId === toNodeId && c.toDotIndex === toDotIndex),
-        )
-        if (dotConflict) return false
+    ) {
+        return false
     }
 
     conn.fromNodeId = fromNodeId
@@ -382,39 +415,17 @@ export function addConnection(
     if (fromNode === undefined || toNode === undefined) return false
 
     const isEnergyConn = fromNode.type === NodeType.EnergySupply
-
-    if (isEnergyConn) {
-        const toDef = NODE_DEFS[toNode.type]
-        // Target must accept energy and the dot index must be the energy input dot.
-        if (!toDef.hasEnergyInput) return false
-        if (toDotIndex !== toDef.inputs.length) return false
-        // Only one energy connection per factory.
-        const alreadyPowered = gameState.connections.some(
-            (c) => c.isEnergy && c.toNodeId === toNodeId,
+    if (
+        !validateConnectionEndpoints(
+            fromNode,
+            fromDotIndex,
+            toNode,
+            toDotIndex,
+            gameState.connections,
+            isEnergyConn,
         )
-        if (alreadyPowered) return false
-        // Each output dot on EnergySupply is unique; check fromDotIndex not reused.
-        const fromDotUsed = gameState.connections.some(
-            (c) =>
-                c.fromNodeId === fromNodeId && c.fromDotIndex === fromDotIndex,
-        )
-        if (fromDotUsed) return false
-    } else {
-        // Validate that fromDotIndex refers to a real output and toDotIndex to a real input.
-        if (fromDotIndex >= fromNode.outputBuffers.length) return false
-        if (toDotIndex >= toNode.inputBuffers.length) return false
-
-        if (wouldCreateCycle(fromNodeId, toNodeId, gameState.connections))
-            return false
-
-        // Check one-line-per-dot rule.
-        const alreadyUsed = gameState.connections.some(
-            (c) =>
-                (c.fromNodeId === fromNodeId &&
-                    c.fromDotIndex === fromDotIndex) ||
-                (c.toNodeId === toNodeId && c.toDotIndex === toDotIndex),
-        )
-        if (alreadyUsed) return false
+    ) {
+        return false
     }
 
     const conn: Connection = {
