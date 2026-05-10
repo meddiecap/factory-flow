@@ -3,6 +3,7 @@ import { NODE_DEFS } from "../../simulation/recipes"
 import { NodeType } from "../../simulation/types"
 import type { NodeInstance } from "../../simulation/types"
 import { effectiveFuelPerTick } from "../../simulation/tick"
+import { effectiveEnergyOutput } from "../../simulation/energy"
 import {
     colToPx,
     rowToPx,
@@ -101,9 +102,7 @@ export function drawNode(
 
     // Energy Supply stats – output rate and connected factory count.
     if (node.type === NodeType.EnergySupply) {
-        const effectiveOutput =
-            (def.energyOutputPerTick ?? 1) +
-            (node.energyOutputUpgradeLevel ?? 0)
+        const effectiveOutput = effectiveEnergyOutput(node, def)
         layer.add(
             new Konva.Text({
                 x: x + 4,

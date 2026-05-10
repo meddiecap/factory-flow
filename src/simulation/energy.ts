@@ -4,6 +4,21 @@ import { effectiveFuelPerTick } from "./tick"
 import { filterEnergyConnections } from "./connections"
 
 /**
+ * Computes the effective energy output per tick for an EnergySupply node.
+ * Base output comes from the node definition; each upgrade level adds +1.0 unit/tick.
+ *
+ * @param node - The EnergySupply node instance.
+ * @param def - The static node definition (must be EnergySupply).
+ * @returns Total energy units produced per tick.
+ */
+export function effectiveEnergyOutput(
+    node: NodeInstance,
+    def: NodeDef,
+): number {
+    return (def.energyOutputPerTick ?? 0) + (node.energyOutputUpgradeLevel ?? 0)
+}
+
+/**
  * Computes a per-node speed factor based on explicit energy connections.
  * Each production factory must be connected to an Energy Supply via an energy connection.
  * The Energy Supply distributes its output equally among all connected factories.
@@ -67,9 +82,7 @@ export function calcNodeSpeedFactors(
         }
 
         const supplyDef = defs[supply.type]
-        const energyOutputPerTick =
-            (supplyDef?.energyOutputPerTick ?? 0) +
-            (supply.energyOutputUpgradeLevel ?? 0)
+        const energyOutputPerTick = effectiveEnergyOutput(supply, supplyDef)
 
         // O(1): count how many factories this supply is feeding.
         const connectedCount = energyBySupply.get(supply.id)?.length ?? 0
