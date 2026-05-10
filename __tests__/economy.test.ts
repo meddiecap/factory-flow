@@ -28,6 +28,7 @@ function makeMarketNode(
         bufferUpgradeLevel: 0,
         efficiencyUpgradeLevel: 0,
         energyEfficiencyUpgradeLevel: 0,
+        energyOutputUpgradeLevel: 0,
         salesPoints,
     }
 }
@@ -157,6 +158,7 @@ describe("buildCost", () => {
             bufferUpgradeLevel: 0,
             efficiencyUpgradeLevel: 0,
             energyEfficiencyUpgradeLevel: 0,
+            energyOutputUpgradeLevel: 0,
         }
         const mine: NodeInstance = {
             id: "mine",
@@ -172,6 +174,7 @@ describe("buildCost", () => {
             bufferUpgradeLevel: 0,
             efficiencyUpgradeLevel: 0,
             energyEfficiencyUpgradeLevel: 0,
+            energyOutputUpgradeLevel: 0,
         }
         const market: NodeInstance = {
             id: "market",
@@ -187,6 +190,7 @@ describe("buildCost", () => {
             bufferUpgradeLevel: 0,
             efficiencyUpgradeLevel: 0,
             energyEfficiencyUpgradeLevel: 0,
+            energyOutputUpgradeLevel: 0,
             salesPoints: 1,
         }
 

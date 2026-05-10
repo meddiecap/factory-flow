@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from "vitest"
-import { NodeType, ResourceType } from "../src/simulation/types"
+import { describe, it, expect } from "vitest"
+import { NodeType } from "../src/simulation/types"
 import type { NodeInstance, GameState } from "../src/simulation/types"
 import { NODE_DEFS } from "../src/simulation/recipes"
 import { applyUpgrade } from "../src/simulation/upgrades"
@@ -27,6 +27,7 @@ function makeNode(type: NodeType): NodeInstance {
         bufferUpgradeLevel: 0,
         efficiencyUpgradeLevel: 0,
         energyEfficiencyUpgradeLevel: 0,
+        energyOutputUpgradeLevel: 0,
     }
 }
 

@@ -37,6 +37,7 @@ function makeNode(id: string, type = NodeType.IronMine): NodeInstance {
         bufferUpgradeLevel: 0,
         efficiencyUpgradeLevel: 0,
         energyEfficiencyUpgradeLevel: 0,
+        energyOutputUpgradeLevel: 0,
     }
 }
 

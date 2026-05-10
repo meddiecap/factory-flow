@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest"
+import { describe, it, expect } from "vitest"
 import { tickNode } from "../src/simulation/tick"
 import { NodeType, ResourceType } from "../src/simulation/types"
 import type { NodeInstance, NodeDef } from "../src/simulation/types"
@@ -19,6 +19,7 @@ function makeNode(overrides: Partial<NodeInstance> = {}): NodeInstance {
         bufferUpgradeLevel: 0,
         efficiencyUpgradeLevel: 0,
         energyEfficiencyUpgradeLevel: 0,
+        energyOutputUpgradeLevel: 0,
         ...overrides,
     }
 }

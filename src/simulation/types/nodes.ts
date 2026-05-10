@@ -4,29 +4,30 @@ import type { RecipeInput, RecipeOutput } from "./resources"
  * All placeable node types on the canvas, including special utility nodes.
  * Each type maps to a static NodeDef that describes its recipe and properties.
  */
-export enum NodeType {
+export const NodeType = {
     // Layer 0 – Raw material sources
-    IronMine = "IronMine",
-    CoalMine = "CoalMine",
-    CopperMine = "CopperMine",
-    SiliconMine = "SiliconMine",
+    IronMine: "IronMine",
+    CoalMine: "CoalMine",
+    CopperMine: "CopperMine",
+    SiliconMine: "SiliconMine",
     // Energy
-    EnergySupply = "EnergySupply",
+    EnergySupply: "EnergySupply",
     // Layer 2 – Processing
-    Smelter = "Smelter",
-    CableFactory = "CableFactory",
+    Smelter: "Smelter",
+    CableFactory: "CableFactory",
     // Layer 3 – Component manufacturing
-    Foundry = "Foundry",
-    ChipFactory = "ChipFactory",
-    Electronics = "Electronics",
-    EngineFactory = "EngineFactory",
+    Foundry: "Foundry",
+    ChipFactory: "ChipFactory",
+    Electronics: "Electronics",
+    EngineFactory: "EngineFactory",
     // Layer 4/5 – Final assembly
-    Assembly = "Assembly",
+    Assembly: "Assembly",
     // Special utility nodes
-    Splitter = "Splitter",
-    Warehouse = "Warehouse",
-    Market = "Market",
-}
+    Splitter: "Splitter",
+    Warehouse: "Warehouse",
+    Market: "Market",
+} as const
+export type NodeType = (typeof NodeType)[keyof typeof NodeType]
 
 /**
  * Operational status of a node during simulation.

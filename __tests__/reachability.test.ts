@@ -47,6 +47,7 @@ function makeNode(type: NodeType, outputCapacity?: number): NodeInstance {
         bufferUpgradeLevel: 0,
         efficiencyUpgradeLevel: 0,
         energyEfficiencyUpgradeLevel: 0,
+        energyOutputUpgradeLevel: 0,
     }
 }
 

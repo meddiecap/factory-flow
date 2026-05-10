@@ -2,27 +2,28 @@
  * All resource types that exist in the game, ordered by production layer.
  * Used throughout the simulation to identify goods flowing through connections.
  */
-export enum ResourceType {
+export const ResourceType = {
     // Layer 0 – Raw materials
-    IronOre = "IronOre",
-    Coal = "Coal",
-    Copper = "Copper",
-    Silicon = "Silicon",
+    IronOre: "IronOre",
+    Coal: "Coal",
+    Copper: "Copper",
+    Silicon: "Silicon",
     // Layer 1 – Energy
-    Fuel = "Fuel",
+    Fuel: "Fuel",
     // Layer 2 – Semi-finished goods
-    Steel = "Steel",
-    Cables = "Cables",
+    Steel: "Steel",
+    Cables: "Cables",
     // Layer 3 – Components
-    HullParts = "HullParts",
-    FuelTanks = "FuelTanks",
-    Circuits = "Circuits",
-    ControlSystem = "ControlSystem",
+    HullParts: "HullParts",
+    FuelTanks: "FuelTanks",
+    Circuits: "Circuits",
+    ControlSystem: "ControlSystem",
     // Layer 4 – Products
-    Thrusters = "Thrusters",
+    Thrusters: "Thrusters",
     // Layer 5 – End product (win condition)
-    Rocket = "Rocket",
-}
+    Rocket: "Rocket",
+} as const
+export type ResourceType = (typeof ResourceType)[keyof typeof ResourceType]
 
 /**
  * One ingredient required per production cycle.

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { tickSplitter, initSplitter } from "../src/simulation/splitter"
+import { tickSplitter } from "../src/simulation/splitter"
 import { NodeType, ResourceType } from "../src/simulation/types"
 import type { NodeInstance } from "../src/simulation/types"
 
@@ -25,6 +25,7 @@ function makeSplitter(ratioA: number, inputAmount = 100): NodeInstance {
         bufferUpgradeLevel: 0,
         efficiencyUpgradeLevel: 0,
         energyEfficiencyUpgradeLevel: 0,
+        energyOutputUpgradeLevel: 0,
         splitterRatioA: ratioA,
         splitterAccumulators: [0, 0],
     }

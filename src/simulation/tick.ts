@@ -61,7 +61,7 @@ export function tickNode(
     }
 
     // --- Output-blocked check ---
-    const outputFull = def.outputs.some((out, i) => {
+    const outputFull = def.outputs.some((_out, i) => {
         const buf = node.outputBuffers[i]
         return buf !== undefined && buf.amount >= buf.capacity
     })
