@@ -9,7 +9,15 @@ export const DOT_DRAG_THRESHOLD = 4
 /** Minimum pixel movement before a node body drag is treated as a move vs a click. */
 export const NODE_DRAG_THRESHOLD = 4
 
-/** Describes a dot that was clicked to start a connection drag. */
+/**
+ * Minimal camera interface used by CanvasInteraction to perform pan/zoom.
+ * Implemented by CanvasRenderer; decoupled via interface to avoid circular imports.
+ */
+export interface CameraController {
+    panBy(dx: number, dy: number): void
+    zoomAt(factor: number, screenX: number, screenY: number): void
+    screenToWorld(pos: { x: number; y: number }): { x: number; y: number }
+}
 export interface DotRef {
     nodeId: string
     dotIndex: number

@@ -51,4 +51,10 @@ export interface GameState {
      * particle animations. Not persisted to localStorage.
      */
     lastTransfers?: import("../connections").TransferEvent[]
+    /**
+     * Camera state (pan offset in screen pixels + zoom factor).
+     * Persisted so the player returns to the same view on reload.
+     * Absent in older saves; treated as { panX: 0, panY: 0, zoom: 1 }.
+     */
+    camera?: { panX: number; panY: number; zoom: number }
 }

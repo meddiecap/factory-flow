@@ -24,12 +24,12 @@ export interface DragContext {
 
 /** Snaps a pixel x-coordinate to the nearest grid column. */
 export function snapCol(px: number): number {
-    return Math.max(0, Math.floor(px / CELL_SIZE))
+    return Math.floor(px / CELL_SIZE)
 }
 
 /** Snaps a pixel y-coordinate to the nearest grid row. */
 export function snapRow(py: number): number {
-    return Math.max(0, Math.floor(py / CELL_SIZE))
+    return Math.floor(py / CELL_SIZE)
 }
 
 /**

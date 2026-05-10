@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, watch, ref } from 'vue'
-import { CanvasRenderer, GRID_COLS, GRID_ROWS, CELL_SIZE } from './canvas/renderer'
+import { CanvasRenderer } from './canvas/renderer'
 import { CanvasInteraction } from './canvas/interaction'
 import { NodeType } from './simulation/types'
 import { gameState, placeNode, addConnection, moveNode, removeConnection, removeNode, reconnectConnection } from './simulation/useGameState'
@@ -12,9 +12,6 @@ import PalettePanel from './components/PalettePanel.vue'
 import HudBar from './components/HudBar.vue'
 import DetailPanel from './components/DetailPanel.vue'
 import WinScreen from './components/WinScreen.vue'
-
-const canvasWidth = GRID_COLS * CELL_SIZE
-const canvasHeight = GRID_ROWS * CELL_SIZE
 
 /** The node currently selected by clicking on the canvas; null when nothing is selected. */
 const selectedNodeId = ref<string | null>(null)
@@ -68,16 +65,28 @@ onMounted(() => {
   }
 
   renderer = new CanvasRenderer('game-canvas')
+
+  // Restore camera state from a previous session, or start at world origin.
+  if (saved?.camera !== undefined) {
+    renderer.setCamera(saved.camera.panX, saved.camera.panY, saved.camera.zoom)
+  }
+
   renderer.render(gameState)
 
   const stage = renderer.getStage()
   const containerEl = document.getElementById('game-canvas') as HTMLElement
 
-  // Delete selected node with Delete or Backspace key.
+  // Delete selected node with Delete/Backspace; F = fit to view; 0 = reset zoom.
   keyDownHandler = (e: KeyboardEvent): void => {
     if ((e.key === 'Delete' || e.key === 'Backspace') && selectedNodeId.value !== null) {
       e.preventDefault()
       deleteSelectedNode()
+    }
+    if (e.key === 'f' || e.key === 'F') {
+      renderer?.fitToView(gameState.nodes)
+    }
+    if (e.key === '0') {
+      renderer?.resetZoom()
     }
   }
   window.addEventListener('keydown', keyDownHandler)
@@ -108,21 +117,25 @@ onMounted(() => {
       reconnectConnection(connectionId, fromNodeId, fromDotIndex, toNodeId, toDotIndex)
       refresh()
     },
-  })
+  }, renderer)
 
   interaction.rebuildDotHits(gameState)
 
   // Start the simulation loop at 20 ticks/second (section 8).
   simulationInterval = setInterval(simulationStep, 50)
 
-  // Auto-save every 5 seconds (section 9).
-  saveInterval = setInterval(() => saveState(gameState), 5000)
+  // Auto-save every 5 seconds, including current camera state.
+  saveInterval = setInterval(() => {
+    if (renderer !== null) gameState.camera = renderer.getCamera()
+    saveState(gameState)
+  }, 5000)
 })
 
 onUnmounted(() => {
   if (simulationInterval !== null) clearInterval(simulationInterval)
   if (saveInterval !== null) clearInterval(saveInterval)
   if (keyDownHandler !== null) window.removeEventListener('keydown', keyDownHandler)
+  interaction?.destroy()
   renderer?.destroy()
 })
 
@@ -176,8 +189,8 @@ function restart(): void {
       <!-- Left palette sidebar -->
       <PalettePanel />
 
-      <!-- Canvas container – Konva mounts inside this div -->
-      <div id="game-canvas" :style="{ width: `${canvasWidth}px`, height: `${canvasHeight}px` }" class="shrink-0" />
+      <!-- Canvas container – Konva mounts inside this div, fills remaining space -->
+      <div id="game-canvas" class="flex-1 min-w-0 overflow-hidden" />
 
       <!-- Right detail panel (only visible when a node is selected) -->
       <DetailPanel :node-id="selectedNodeId" @close="selectedNodeId = null" @delete-node="deleteSelectedNode" />

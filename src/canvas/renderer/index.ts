@@ -13,8 +13,6 @@ import { calcMarketSlotRevenues } from "../../simulation/throughput"
 import { NODE_DEFS } from "../../simulation/recipes"
 import { outputDotPos, inputDotPos, CELL_SIZE } from "../shared/geometry"
 import {
-    GRID_COLS,
-    GRID_ROWS,
     RESOURCE_COLORS,
     MAX_PARTICLES_PER_TICK,
     PARTICLE_DURATION_MS,
@@ -24,12 +22,17 @@ import { drawGrid } from "./grid"
 import { drawNode } from "./nodes"
 import { drawConnections, routeWaypoints } from "./connections"
 
-export { GRID_COLS, GRID_ROWS, CELL_SIZE }
+export { CELL_SIZE }
 export { inputDotX } from "../shared/geometry"
+
+/** Minimum allowed zoom factor. */
+const ZOOM_MIN = 0.25
+/** Maximum allowed zoom factor. */
+const ZOOM_MAX = 3.0
 
 /**
  * Manages a Konva Stage and renders a static snapshot of GameState onto it.
- * Designed to be called after any state change to refresh the visual representation.
+ * Owns the camera state (pan + zoom) and exposes methods for pan/zoom manipulation.
  * Separates canvas rendering concerns from Vue reactivity and simulation logic.
  */
 export class CanvasRenderer {
@@ -39,30 +42,35 @@ export class CanvasRenderer {
     private nodeLayer: Konva.Layer
     private particleLayer: Konva.Layer
 
-    /**
-     * Map from connectionId → array of active Konva.Circle particles.
-     * Used to destroy particles immediately when their connection is removed.
-     */
     private _particles = new Map<string, Konva.Circle[]>()
-
-    /**
-     * Cached node and connection maps built during render(), reused by spawnParticles()
-     * to avoid a second O(n) pass over nodes/connections on the same tick.
-     */
     private _nodeMap = new Map<string, NodeInstance>()
     private _connMap = new Map<string, Connection>()
 
+    /** Camera pan offset in screen pixels (= stage.position()). */
+    private _panX = 0
+    private _panY = 0
+    /** Current zoom factor (= stage.scaleX()). */
+    private _zoom = 1.0
+
+    private _containerId: string
+    private _resizeHandler: () => void
+
     /**
-     * Creates a new CanvasRenderer and attaches a Konva Stage to the given container.
-     * Sets up four rendering layers: grid, connections, nodes, and particles.
+     * Creates a new CanvasRenderer attached to the given container element.
+     * The stage fills the container; a resize listener keeps it in sync with the viewport.
      *
      * @param containerId - The `id` of the HTML element to mount the Konva stage inside.
      */
     constructor(containerId: string) {
+        this._containerId = containerId
+        const container = document.getElementById(containerId)!
+        const w = container.offsetWidth || window.innerWidth
+        const h = container.offsetHeight || window.innerHeight
+
         this.stage = new Konva.Stage({
             container: containerId,
-            width: GRID_COLS * CELL_SIZE,
-            height: GRID_ROWS * CELL_SIZE,
+            width: w,
+            height: h,
         })
 
         this.gridLayer = new Konva.Layer()
@@ -75,7 +83,152 @@ export class CanvasRenderer {
         this.stage.add(this.nodeLayer)
         this.stage.add(this.particleLayer)
 
-        drawGrid(this.gridLayer)
+        this._resizeHandler = () => {
+            const el = document.getElementById(this._containerId)
+            if (el === null) return
+            this.stage.width(el.offsetWidth)
+            this.stage.height(el.offsetHeight)
+            this._updateStage()
+        }
+        window.addEventListener("resize", this._resizeHandler)
+        this._updateStage()
+    }
+
+    /** Applies camera pan/zoom to the stage and redraws the grid for the new viewport. */
+    private _updateStage(): void {
+        this.stage.scale({ x: this._zoom, y: this._zoom })
+        this.stage.position({ x: this._panX, y: this._panY })
+        drawGrid(
+            this.gridLayer,
+            this._panX,
+            this._panY,
+            this._zoom,
+            this.stage.width(),
+            this.stage.height(),
+        )
+        this.gridLayer.batchDraw()
+    }
+
+    /**
+     * Converts a screen-space position to world-pixel coordinates.
+     * Used by the interaction layer to translate pointer events.
+     *
+     * @param pos - Position in screen pixels.
+     * @returns Position in world pixels.
+     */
+    screenToWorld(pos: { x: number; y: number }): { x: number; y: number } {
+        return {
+            x: (pos.x - this._panX) / this._zoom,
+            y: (pos.y - this._panY) / this._zoom,
+        }
+    }
+
+    /**
+     * Pans the camera by a screen-pixel delta (e.g. from a mouse drag).
+     *
+     * @param dx - Horizontal delta in screen pixels.
+     * @param dy - Vertical delta in screen pixels.
+     */
+    panBy(dx: number, dy: number): void {
+        this._panX += dx
+        this._panY += dy
+        this._updateStage()
+    }
+
+    /**
+     * Zooms in or out at a fixed screen-space cursor position.
+     * Adjusts pan so the point under the cursor stays fixed on screen.
+     *
+     * @param factor - Multiplicative scale change (> 1 = zoom in, < 1 = zoom out).
+     * @param screenX - Cursor x in screen pixels.
+     * @param screenY - Cursor y in screen pixels.
+     */
+    zoomAt(factor: number, screenX: number, screenY: number): void {
+        const newZoom = Math.max(
+            ZOOM_MIN,
+            Math.min(ZOOM_MAX, this._zoom * factor),
+        )
+        if (newZoom === this._zoom) return
+        const worldX = (screenX - this._panX) / this._zoom
+        const worldY = (screenY - this._panY) / this._zoom
+        this._zoom = newZoom
+        this._panX = screenX - worldX * this._zoom
+        this._panY = screenY - worldY * this._zoom
+        this._updateStage()
+    }
+
+    /**
+     * Resets zoom to 1.0×, keeping the screen centre fixed.
+     * Triggered by the `0` keyboard shortcut.
+     */
+    resetZoom(): void {
+        const cx = this.stage.width() / 2
+        const cy = this.stage.height() / 2
+        this.zoomAt(1.0 / this._zoom, cx, cy)
+    }
+
+    /**
+     * Zooms and pans so that all placed nodes are visible with a 2-cell margin.
+     * Triggered by the `F` keyboard shortcut and after loading a schematic.
+     *
+     * @param nodes - All active nodes on the canvas.
+     */
+    fitToView(nodes: NodeInstance[]): void {
+        if (nodes.length === 0) return
+        const MARGIN = 2
+        let minCol = Infinity,
+            minRow = Infinity
+        let maxCol = -Infinity,
+            maxRow = -Infinity
+        for (const n of nodes) {
+            const def = NODE_DEFS[n.type]
+            minCol = Math.min(minCol, n.position.col)
+            minRow = Math.min(minRow, n.position.row)
+            maxCol = Math.max(maxCol, n.position.col + def.gridSize.width)
+            maxRow = Math.max(maxRow, n.position.row + def.gridSize.height)
+        }
+        minCol -= MARGIN
+        minRow -= MARGIN
+        maxCol += MARGIN
+        maxRow += MARGIN
+        const bbW = (maxCol - minCol) * CELL_SIZE
+        const bbH = (maxRow - minRow) * CELL_SIZE
+        const zoom = Math.max(
+            ZOOM_MIN,
+            Math.min(
+                ZOOM_MAX,
+                Math.min(this.stage.width() / bbW, this.stage.height() / bbH),
+            ),
+        )
+        const centerWorldX = ((minCol + maxCol) / 2) * CELL_SIZE
+        const centerWorldY = ((minRow + maxRow) / 2) * CELL_SIZE
+        this._zoom = zoom
+        this._panX = this.stage.width() / 2 - centerWorldX * zoom
+        this._panY = this.stage.height() / 2 - centerWorldY * zoom
+        this._updateStage()
+    }
+
+    /**
+     * Returns current camera state for persistence.
+     *
+     * @returns Pan offsets in screen pixels and zoom factor.
+     */
+    getCamera(): { panX: number; panY: number; zoom: number } {
+        return { panX: this._panX, panY: this._panY, zoom: this._zoom }
+    }
+
+    /**
+     * Restores a previously persisted camera state.
+     *
+     * @param panX - Horizontal pan offset in screen pixels.
+     * @param panY - Vertical pan offset in screen pixels.
+     * @param zoom - Zoom factor, clamped to [ZOOM_MIN, ZOOM_MAX].
+     */
+    setCamera(panX: number, panY: number, zoom: number): void {
+        this._panX = panX
+        this._panY = panY
+        this._zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, zoom))
+        this._updateStage()
     }
 
     /**
@@ -287,9 +440,11 @@ export class CanvasRenderer {
 
     /**
      * Destroys the Konva Stage and frees all canvas resources.
+     * Removes the resize listener registered in the constructor.
      * Should be called when the Vue component is unmounted.
      */
     destroy(): void {
+        window.removeEventListener("resize", this._resizeHandler)
         this.stage.destroy()
     }
 }

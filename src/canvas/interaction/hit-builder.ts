@@ -39,6 +39,10 @@ export interface HitBuilderCallbacks {
     ) => void
     /** Returns true when a node drag is currently active (suppresses click-to-select). */
     isDragActive: () => boolean
+    /** Returns true when pan mode is active (spacebar held); suppresses normal LMB actions. */
+    isPanMode: () => boolean
+    /** Converts a screen-space pointer position to world-pixel coordinates. */
+    screenToWorld: (pos: { x: number; y: number }) => { x: number; y: number }
 }
 
 /**
@@ -74,9 +78,14 @@ export function buildDotHitShapes(
             fill: "transparent",
         })
         hitRect.setAttr("selectNodeId", node.id)
-        hitRect.on("mousedown touchstart", () => {
-            const pos = stage.getPointerPosition()
-            if (pos === null || cbs.isDragActive()) return
+        hitRect.on("mousedown touchstart", (e) => {
+            // Ignore middle/right mouse button — those are reserved for panning.
+            if (e.type === "mousedown" && (e.evt as MouseEvent).button !== 0)
+                return
+            if (cbs.isPanMode() || cbs.isDragActive()) return
+            const screenPos = stage.getPointerPosition()
+            if (screenPos === null) return
+            const worldPos = cbs.screenToWorld(screenPos)
             cbs.onNodeBodyDown(
                 node.id,
                 def.gridSize.width,
@@ -85,11 +94,12 @@ export function buildDotHitShapes(
                 by,
                 bw,
                 bh,
-                pos,
+                worldPos,
             )
         })
         hitRect.on("click tap", () => {
-            if (!cbs.isDragActive()) cbs.onSelectNode(node.id)
+            if (!cbs.isDragActive() && !cbs.isPanMode())
+                cbs.onSelectNode(node.id)
         })
         layer.add(hitRect)
     }
@@ -164,8 +174,10 @@ function _addDotCircle(
     circle.setAttr("dotNodeId", nodeId)
     circle.setAttr("dotIndex", dotIndex)
     circle.setAttr("dotSide", side)
-    circle.on("mousedown touchstart", () =>
-        onDown(nodeId, dotIndex, side, x, y),
-    )
+    circle.on("mousedown touchstart", (e) => {
+        // Ignore middle/right mouse button — those are reserved for panning.
+        if (e.type === "mousedown" && (e.evt as MouseEvent).button !== 0) return
+        onDown(nodeId, dotIndex, side, x, y)
+    })
     layer.add(circle)
 }

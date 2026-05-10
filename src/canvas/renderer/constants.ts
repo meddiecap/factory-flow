@@ -1,11 +1,5 @@
 import { ResourceType } from "../../simulation/types"
 
-/** Number of grid columns in the canvas. */
-export const GRID_COLS = 40
-
-/** Number of grid rows in the canvas. */
-export const GRID_ROWS = 24
-
 /** Radius of input/output dots on nodes in pixels. */
 export const DOT_RADIUS = 6
 

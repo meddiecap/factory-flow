@@ -5,14 +5,17 @@ import { buildDotHitShapes } from "./hit-builder"
 import type { HitBuilderCallbacks } from "./hit-builder"
 import { handleDragMove, handleDragEnd } from "./drag-handlers"
 import type { DragContext } from "./drag-handlers"
-import type { CanvasInteractionCallbacks } from "./types"
+import type { CanvasInteractionCallbacks, CameraController } from "./types"
 
 export type { CanvasInteractionCallbacks }
 
+/** Zoom step per scroll-wheel tick (12 % in/out). */
+const ZOOM_FACTOR = 1.12
+
 /**
  * Adds pointer-event-based interactivity to a Konva Stage.
- * Handles: output-dot drag to create connections, node body click to select,
- * and drop events from the HTML palette sidebar onto the canvas container.
+ * Handles: connection dragging, node selection and movement, palette drops,
+ * infinite-canvas pan (middle mouse / spacebar) and zoom (scroll wheel).
  * Keeps interaction logic separate from rendering logic.
  */
 export class CanvasInteraction {
@@ -20,6 +23,7 @@ export class CanvasInteraction {
     private dragLayer: Konva.Layer
     private callbacks: CanvasInteractionCallbacks
     private containerEl: HTMLElement
+    private camera: CameraController
     private ctx: DragContext = {
         dragLine: null,
         dragStart: null,
@@ -28,25 +32,73 @@ export class CanvasInteraction {
         state: null,
     }
 
+    /** True while spacebar is held — enables LMB-drag panning. */
+    private _spacebarHeld = false
+    /** True while a pan gesture (middle mouse or spacebar+LMB) is active. */
+    private _isPanning = false
+
+    // Stored handlers needed for cleanup in destroy().
+    private _keyDown: (e: KeyboardEvent) => void
+    private _keyUp: (e: KeyboardEvent) => void
+    private _winMouseMove: (e: MouseEvent) => void
+    private _winMouseUp: (e: MouseEvent) => void
+
     /**
      * Sets up all pointer event listeners on the stage and its HTML container.
      *
      * @param stage - The Konva Stage to attach events to.
      * @param containerEl - The HTML element wrapping the canvas (used for drop events).
      * @param callbacks - Event handler functions for the game controller.
+     * @param camera - Camera controller (provided by CanvasRenderer) for pan/zoom.
      */
     constructor(
         stage: Konva.Stage,
         containerEl: HTMLElement,
         callbacks: CanvasInteractionCallbacks,
+        camera: CameraController,
     ) {
         this.stage = stage
         this.callbacks = callbacks
         this.containerEl = containerEl
+        this.camera = camera
 
         this.dragLayer = new Konva.Layer()
         stage.add(this.dragLayer)
 
+        this._keyDown = (e: KeyboardEvent) => {
+            if (e.code === "Space" && !e.repeat) {
+                this._spacebarHeld = true
+                this.containerEl.style.cursor = "grab"
+                e.preventDefault()
+            }
+        }
+        this._keyUp = (e: KeyboardEvent) => {
+            if (e.code === "Space") {
+                this._spacebarHeld = false
+                this._isPanning = false
+                this.containerEl.style.cursor = ""
+            }
+        }
+        this._winMouseMove = (e: MouseEvent) => {
+            if (!this._isPanning) return
+            this.camera.panBy(e.movementX, e.movementY)
+        }
+        this._winMouseUp = (e: MouseEvent) => {
+            if (
+                this._isPanning &&
+                (e.button === 1 || (e.button === 0 && this._spacebarHeld))
+            ) {
+                this._isPanning = false
+                if (this._spacebarHeld) this.containerEl.style.cursor = "grab"
+                else this.containerEl.style.cursor = ""
+            }
+        }
+        window.addEventListener("keydown", this._keyDown)
+        window.addEventListener("keyup", this._keyUp)
+        window.addEventListener("mousemove", this._winMouseMove)
+        window.addEventListener("mouseup", this._winMouseUp)
+
+        this._bindPanZoom()
         this._bindDrop()
     }
 
@@ -96,6 +148,8 @@ export class CanvasInteraction {
                 this._startDotInteraction(nodeId, dotIndex, side, x, y),
             isDragActive: () =>
                 this.ctx.nodeDrag !== null && this.ctx.nodeDrag.active,
+            isPanMode: () => this._spacebarHeld,
+            screenToWorld: (pos) => this.camera.screenToWorld(pos),
         }
 
         buildDotHitShapes(this.dragLayer, state, this.stage, cbs)
@@ -105,19 +159,18 @@ export class CanvasInteraction {
             "mousemove.drag mouseup.drag touchmove.drag touchend.drag",
         )
         this.stage.on("mousemove.drag touchmove.drag", () => {
-            handleDragMove(
-                this.ctx,
-                this.stage.getPointerPosition(),
-                this.dragLayer,
-            )
+            const screenPos = this.stage.getPointerPosition()
+            const worldPos = screenPos
+                ? this.camera.screenToWorld(screenPos)
+                : null
+            handleDragMove(this.ctx, worldPos, this.dragLayer)
         })
         this.stage.on("mouseup.drag touchend.drag", () => {
-            handleDragEnd(
-                this.ctx,
-                this.stage.getPointerPosition(),
-                this.dragLayer,
-                this.callbacks,
-            )
+            const screenPos = this.stage.getPointerPosition()
+            const worldPos = screenPos
+                ? this.camera.screenToWorld(screenPos)
+                : null
+            handleDragEnd(this.ctx, worldPos, this.dragLayer, this.callbacks)
         })
     }
 
@@ -161,8 +214,9 @@ export class CanvasInteraction {
         )
 
         if (existingConn !== undefined) {
-            const pos = this.stage.getPointerPosition()
-            if (pos === null) return
+            const screenPos = this.stage.getPointerPosition()
+            if (screenPos === null) return
+            const worldPos = this.camera.screenToWorld(screenPos)
             this.ctx.reconnectDrag = {
                 connectionId: existingConn.id,
                 originalFromNodeId: existingConn.fromNodeId,
@@ -170,8 +224,8 @@ export class CanvasInteraction {
                 originalToNodeId: existingConn.toNodeId,
                 originalToDotIndex: existingConn.toDotIndex,
                 grabbedSide: side,
-                startX: pos.x,
-                startY: pos.y,
+                startX: worldPos.x,
+                startY: worldPos.y,
                 active: false,
             }
             this.ctx.dragLine = new Konva.Line({
@@ -188,6 +242,34 @@ export class CanvasInteraction {
         // Free input dot without an existing connection → no action on mousedown.
     }
 
+    /**
+     * Binds scroll-wheel zoom and middle-mouse / spacebar pan to the stage.
+     * Pan deltas come from window mousemove (captured outside the stage for reliability).
+     */
+    private _bindPanZoom(): void {
+        this.stage.on("wheel", (e) => {
+            e.evt.preventDefault()
+            const pos = this.stage.getPointerPosition()
+            if (pos === null) return
+            const factor = e.evt.deltaY < 0 ? ZOOM_FACTOR : 1 / ZOOM_FACTOR
+            this.camera.zoomAt(factor, pos.x, pos.y)
+        })
+
+        // Middle mouse button starts panning.
+        this.stage.on("mousedown", (e) => {
+            if (e.evt.button === 1) {
+                e.evt.preventDefault()
+                this._isPanning = true
+                this.containerEl.style.cursor = "grabbing"
+            }
+            // Spacebar + LMB also starts panning.
+            if (e.evt.button === 0 && this._spacebarHeld) {
+                this._isPanning = true
+                this.containerEl.style.cursor = "grabbing"
+            }
+        })
+    }
+
     private _bindDrop(): void {
         this.containerEl.addEventListener("dragover", (e) => e.preventDefault())
         this.containerEl.addEventListener("drop", (e) => {
@@ -195,9 +277,25 @@ export class CanvasInteraction {
             const type = e.dataTransfer?.getData("text/x-node-type")
             if (!type) return
             const rect = this.containerEl.getBoundingClientRect()
-            const col = Math.floor((e.clientX - rect.left) / CELL_SIZE)
-            const row = Math.floor((e.clientY - rect.top) / CELL_SIZE)
+            const screenPos = {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top,
+            }
+            const worldPos = this.camera.screenToWorld(screenPos)
+            const col = Math.floor(worldPos.x / CELL_SIZE)
+            const row = Math.floor(worldPos.y / CELL_SIZE)
             this.callbacks.onDropNode(type, col, row)
         })
+    }
+
+    /**
+     * Removes all window-level event listeners registered by this instance.
+     * Call when the Vue component is unmounted.
+     */
+    destroy(): void {
+        window.removeEventListener("keydown", this._keyDown)
+        window.removeEventListener("keyup", this._keyUp)
+        window.removeEventListener("mousemove", this._winMouseMove)
+        window.removeEventListener("mouseup", this._winMouseUp)
     }
 }

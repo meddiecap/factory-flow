@@ -180,15 +180,11 @@ export function placeNode(type: NodeType, col: number, row: number): boolean {
 
     if (gameState.money < cost) return false
 
-    // Clamp to grid bounds
-    const clampedCol = Math.max(0, Math.min(col, 40 - def.gridSize.width))
-    const clampedRow = Math.max(0, Math.min(row, 24 - def.gridSize.height))
-
     if (
         hasOverlap(
             gameState.nodes,
-            clampedCol,
-            clampedRow,
+            col,
+            row,
             def.gridSize.width,
             def.gridSize.height,
         )
@@ -196,7 +192,7 @@ export function placeNode(type: NodeType, col: number, row: number): boolean {
         return false
     }
 
-    const node = createNodeInstance(newNodeId(), type, clampedCol, clampedRow)
+    const node = createNodeInstance(newNodeId(), type, col, row)
     gameState.nodes.push(node)
     const counts = gameState.nodeTypeCounts ?? (gameState.nodeTypeCounts = {})
     counts[type] = (counts[type] ?? 0) + 1
@@ -216,9 +212,8 @@ export function placeNode(type: NodeType, col: number, row: number): boolean {
 export function moveNode(nodeId: string, col: number, row: number): void {
     const node = gameState.nodes.find((n) => n.id === nodeId)
     if (node === undefined) return
-    const def = NODE_DEFS[node.type]
-    node.position.col = Math.max(0, Math.min(col, 40 - def.gridSize.width))
-    node.position.row = Math.max(0, Math.min(row, 24 - def.gridSize.height))
+    node.position.col = col
+    node.position.row = row
 }
 
 /**

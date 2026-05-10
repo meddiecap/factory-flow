@@ -1,12 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import { gameState } from '../simulation/useGameState'
-
-/** Cost of the first canvas expansion (section 3.3): €200 × 1.5^0 = €200. */
-const expandCost = computed(() => Math.ceil(200 * 1.5 ** 0))
-
-/** Whether the player can currently afford to expand the canvas. */
-const canAffordExpand = computed(() => gameState.money >= expandCost.value)
 
 /** Formats a number as a whole-euro string without decimals. */
 function fmt(n: number): string {
@@ -33,12 +26,5 @@ function fmt(n: number): string {
                 <strong class="ml-1 tabular-nums">{{ gameState.tick }}</strong>
             </span>
         </div>
-
-        <button class="rounded px-3 py-1 text-xs font-medium transition-colors" :class="canAffordExpand
-                ? 'bg-blue-700 hover:bg-blue-600 text-white cursor-pointer'
-                : 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-50'
-            " :disabled="!canAffordExpand" title="Expand the canvas by one row or column">
-            Expand Canvas (€{{ fmt(expandCost) }})
-        </button>
     </header>
 </template>
