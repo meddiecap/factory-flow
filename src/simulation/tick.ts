@@ -2,6 +2,17 @@ import { NodeType } from "./types"
 import type { NodeInstance, NodeDef } from "./types"
 
 /**
+ * Returns the efficiency reduction multiplier for a given upgrade level.
+ * Each level reduces consumption by 10%, floored at 50% of the base value.
+ *
+ * @param level - Current upgrade level (0 = no reduction).
+ * @returns Multiplier in the range [0.5, 1.0].
+ */
+function upgradeReductionFactor(level: number): number {
+    return Math.max(0.5, 1 - level * 0.1)
+}
+
+/**
  * Computes the effective fuel per tick for a node, accounting for energy efficiency upgrades.
  * Each upgrade level reduces fuel consumption by 10%, with a minimum of 50% of the base value.
  *
@@ -10,8 +21,7 @@ import type { NodeInstance, NodeDef } from "./types"
  * @returns Effective fuel consumption per tick.
  */
 export function effectiveFuelPerTick(base: number, level: number): number {
-    const factor = Math.max(0.5, 1 - level * 0.1)
-    return base * factor
+    return base * upgradeReductionFactor(level)
 }
 
 /**
@@ -23,8 +33,7 @@ export function effectiveFuelPerTick(base: number, level: number): number {
  * @returns Effective input amount per cycle.
  */
 export function effectiveInputAmount(base: number, level: number): number {
-    const factor = Math.max(0.5, 1 - level * 0.1)
-    return base * factor
+    return base * upgradeReductionFactor(level)
 }
 
 /**
