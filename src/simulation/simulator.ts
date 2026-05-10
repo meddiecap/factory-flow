@@ -26,7 +26,12 @@ export function tick(state: GameState): void {
     for (const node of nodes) nodeMap.set(node.id, node)
 
     // 1. Per-node speed factors from explicit energy connections.
-    const speedFactors = calcNodeSpeedFactors(nodes, connections, NODE_DEFS, nodeMap)
+    const speedFactors = calcNodeSpeedFactors(
+        nodes,
+        connections,
+        NODE_DEFS,
+        nodeMap,
+    )
 
     // 2. Transport goods along resource connections (energy connections are skipped).
     state.lastTransfers = tickConnections(nodes, connections, nodeMap)

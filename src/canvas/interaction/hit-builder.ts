@@ -97,7 +97,10 @@ export function buildDotHitShapes(
     const energyOutputCounts = new Map<string, number>()
     for (const c of state.connections) {
         if (!c.isEnergy) continue
-        energyOutputCounts.set(c.fromNodeId, (energyOutputCounts.get(c.fromNodeId) ?? 0) + 1)
+        energyOutputCounts.set(
+            c.fromNodeId,
+            (energyOutputCounts.get(c.fromNodeId) ?? 0) + 1,
+        )
     }
 
     // Pass 2: dot circles (on top of body rects so they get priority for mousedown).
