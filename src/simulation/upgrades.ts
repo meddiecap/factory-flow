@@ -1,7 +1,7 @@
 import { ResourceType } from "./types"
 import type { NodeInstance, Connection, GameState } from "./types"
 import { NODE_DEFS } from "./recipes"
-import { upgradeCost } from "./economy"
+import { upgradeCost, salesPointUpgradeCost } from "./economy"
 
 /**
  * All upgrade types that can be applied to a node.
@@ -78,8 +78,7 @@ export function applyUpgrade(
 
         case "salesPoint": {
             const pts = node.salesPoints ?? 1
-            // Formula from section 6: €200 × 2^(currentPoints − 1).
-            const cost = Math.ceil(200 * 2 ** (pts - 1))
+            const cost = salesPointUpgradeCost(pts)
             if (state.money < cost) return false
             state.money -= cost
             // Add a new input buffer slot; resource type is a placeholder until

@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { NodeType } from '../simulation/types'
 import type { NodeInstance } from '../simulation/types'
 import { NODE_DEFS } from '../simulation/recipes'
-import { upgradeCost } from '../simulation/economy'
+import { upgradeCost, salesPointUpgradeCost } from '../simulation/economy'
 import { applyUpgrade } from '../simulation/upgrades'
 import type { UpgradeType } from '../simulation/upgrades'
 import { gameState } from '../simulation/useGameState'
@@ -108,11 +108,8 @@ const energyEfficiencyUpgradeCost = computed(() =>
         : 0,
 )
 
-/** Cost of the next Market sales-point upgrade: €200 × 2^(currentSalesPoints - 1). */
-const salesPointCost = computed(() => {
-    const pts = node.value?.salesPoints ?? 1
-    return Math.ceil(200 * 2 ** (pts - 1))
-})
+/** Cost of the next Market sales-point upgrade. */
+const salesPointCost = computed(() => salesPointUpgradeCost(node.value?.salesPoints ?? 1))
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 

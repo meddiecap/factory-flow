@@ -103,6 +103,17 @@ export function buildCost(type: NodeType, existingCount: number): number {
 }
 
 /**
+ * Calculates the cost for the next Market sales-point upgrade.
+ * Formula from section 6: €200 × 2^(currentSalesPoints − 1).
+ *
+ * @param currentSalesPoints - The node's current number of sales points (≥ 1).
+ * @returns The cost in whole currency units (€).
+ */
+export function salesPointUpgradeCost(currentSalesPoints: number): number {
+    return Math.ceil(200 * 2 ** (currentSalesPoints - 1))
+}
+
+/**
  * Calculates the cost to purchase the next upgrade level for a node.
  * Level 1 costs 2× the node's base build cost; each subsequent level is 3× more expensive.
  * Formula: `baseCost × 2 × 3^currentLevel`
