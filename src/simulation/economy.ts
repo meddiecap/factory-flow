@@ -15,7 +15,6 @@ const UNLOCK_THRESHOLDS: Partial<Record<NodeType, number>> = {
     [NodeType.CoalMine]: 200,
     [NodeType.CopperMine]: 200,
     [NodeType.SiliconMine]: 200,
-    [NodeType.Warehouse]: 200,
     [NodeType.Smelter]: 800,
     [NodeType.Foundry]: 3000,
     [NodeType.CableFactory]: 3000,

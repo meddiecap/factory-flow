@@ -23,7 +23,7 @@ export function effectiveEnergyOutput(
  * Each production factory must be connected to an Energy Supply via an energy connection.
  * The Energy Supply distributes its output equally among all connected factories.
  * Factories without an energy connection receive speedFactor 0 (completely stopped).
- * Utility nodes (Splitter, Market, Warehouse) and EnergySupply itself receive 1.0.
+ * Utility nodes (Splitter, Merger, Market) and EnergySupply itself receive 1.0.
  * Called once per tick before nodes are advanced.
  *
  * @param nodes - All node instances on the canvas.

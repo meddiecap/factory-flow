@@ -3,7 +3,7 @@ import type { NodeInstance, Connection } from "./types"
 import { NODE_DEFS, MARKET_PRICES } from "./recipes"
 
 /**
- * Recursively traces back through pass-through nodes (Splitter, Warehouse) to
+ * Recursively traces back through pass-through nodes (Splitter, Merger) to
  * find the steady-state throughput in units/tick reaching a given output dot.
  * Used by the UI to compute projected revenue on Market nodes.
  *
@@ -108,22 +108,6 @@ export function traceUnitsPerTick(
             : null
         if (rateA === null && rateB === null) return null
         return (rateA ?? 0) + (rateB ?? 0)
-    }
-
-    if (srcNode.type === NodeType.Warehouse) {
-        // Warehouse is a straight passthrough — trace back its input.
-        const inConn = cMap.get(`${srcNode.id}:0`)
-        if (!inConn) return null
-        return traceUnitsPerTick(
-            inConn.fromNodeId,
-            inConn.fromDotIndex,
-            nodes,
-            connections,
-            speedFactors,
-            depth + 1,
-            nMap,
-            cMap,
-        )
     }
 
     return null

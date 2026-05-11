@@ -75,7 +75,7 @@ export interface NodeDef {
     outputs: RecipeOutput[]
     /**
      * Number of ticks for one production cycle.
-     * Set to 0 for pass-through nodes (Splitter, Warehouse, Market).
+     * Set to 0 for pass-through nodes (Splitter, Merger, Market).
      */
     cycleDuration: number
     /** Base purchase price in currency units (€). */
@@ -88,7 +88,7 @@ export interface NodeDef {
     fuelPerTick: number
     /**
      * Whether this node requires an explicit energy connection to operate.
-     * True for all production factories; false for EnergySupply, Splitter, Market, Warehouse.
+     * True for all production factories; false for EnergySupply, Splitter, Merger, Market.
      */
     hasEnergyInput?: boolean
     /**

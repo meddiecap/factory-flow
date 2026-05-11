@@ -155,7 +155,7 @@ function fillPct(amount: number, capacity: number): string {
 /**
  * For each Market input slot, returns the steady-state €/s based on what the
  * connected factory structurally produces, tracing back through Splitters and
- * Warehouses to the original producer. Returns null for unconnected slots.
+ * Mergers to the original producer. Returns null for unconnected slots.
  */
 const marketSlotRevenues = computed<Array<number | null>>(() => {
     if (!node.value || node.value.type !== NodeType.Market) return []
