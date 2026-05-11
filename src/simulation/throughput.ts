@@ -78,6 +78,38 @@ export function traceUnitsPerTick(
         return upstreamRate * ratio
     }
 
+    if (srcNode.type === NodeType.Merger) {
+        // A Merger combines both inputs into one output — sum both upstream rates.
+        const inConnA = cMap.get(`${srcNode.id}:0`)
+        const inConnB = cMap.get(`${srcNode.id}:1`)
+        const rateA = inConnA
+            ? traceUnitsPerTick(
+                  inConnA.fromNodeId,
+                  inConnA.fromDotIndex,
+                  nodes,
+                  connections,
+                  speedFactors,
+                  depth + 1,
+                  nMap,
+                  cMap,
+              )
+            : null
+        const rateB = inConnB
+            ? traceUnitsPerTick(
+                  inConnB.fromNodeId,
+                  inConnB.fromDotIndex,
+                  nodes,
+                  connections,
+                  speedFactors,
+                  depth + 1,
+                  nMap,
+                  cMap,
+              )
+            : null
+        if (rateA === null && rateB === null) return null
+        return (rateA ?? 0) + (rateB ?? 0)
+    }
+
     if (srcNode.type === NodeType.Warehouse) {
         // Warehouse is a straight passthrough — trace back its input.
         const inConn = cMap.get(`${srcNode.id}:0`)
