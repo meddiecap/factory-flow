@@ -48,10 +48,8 @@ export class PanController {
             camera.panBy(e.movementX, e.movementY)
         }
         this._winMouseUp = (e) => {
-            if (
-                this._isPanning &&
-                (e.button === 1 || (e.button === 0 && this._spacebarHeld))
-            ) {
+            if (!this._isPanning) return
+            if (e.button === 1 || e.button === 0) {
                 this._isPanning = false
                 containerEl.style.cursor = this._spacebarHeld ? "grab" : ""
             }
@@ -78,6 +76,17 @@ export class PanController {
             }
             // Spacebar + LMB also starts panning.
             if (e.evt.button === 0 && this._spacebarHeld) {
+                this._isPanning = true
+                containerEl.style.cursor = "grabbing"
+            }
+            // LMB on anything that is not a node body or dot starts panning.
+            // All interactive hit shapes carry the name "dot-hit"; everything else
+            // (grid rects/lines, layer background) is fair game for pan.
+            if (
+                e.evt.button === 0 &&
+                !this._spacebarHeld &&
+                (e.target as Konva.Node).name() !== "dot-hit"
+            ) {
                 this._isPanning = true
                 containerEl.style.cursor = "grabbing"
             }
