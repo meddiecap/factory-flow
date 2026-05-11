@@ -1,11 +1,15 @@
 import productionReadySfxUrl from "../assets/sfx/production_ready.wav?url"
-import { ref } from "vue"
+import { ref, watch } from "vue"
 import { NODE_DEFS } from "../simulation/recipes"
 import { CELL_SIZE } from "../canvas/shared/geometry"
 import type { NodeInstance } from "../simulation/types"
 
-/** Reactive flag controlling whether sound effects are played. */
-export const soundEnabled = ref(true)
+const STORAGE_KEY = "soundEnabled"
+
+/** Reactive flag controlling whether sound effects are played. Persisted to localStorage. */
+export const soundEnabled = ref(localStorage.getItem(STORAGE_KEY) !== "false")
+
+watch(soundEnabled, (val) => localStorage.setItem(STORAGE_KEY, String(val)))
 
 /** Maximum volume for a node at the exact center of the screen. */
 const BASE_VOLUME = 0.2
