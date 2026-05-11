@@ -14,6 +14,11 @@ import {
 import { energyInputDotPos } from "./geometry"
 import { DOT_HIT_RADIUS } from "./types"
 import { buildEnergyOutputCounts } from "../../simulation/connections"
+import {
+    DOT_INPUT_COLOR,
+    DOT_OUTPUT_COLOR,
+    ENERGY_DOT_COLOR,
+} from "../renderer/constants"
 
 /**
  * Callbacks fired by hit shapes created in buildDotHitShapes.
@@ -37,6 +42,17 @@ export interface HitBuilderCallbacks {
         x: number,
         y: number,
     ) => void
+    /** Called when the pointer enters a dot hit area. */
+    onDotHover: (
+        nodeId: string,
+        dotIndex: number,
+        side: "output" | "input",
+        x: number,
+        y: number,
+        color: string,
+    ) => void
+    /** Called when the pointer leaves a dot hit area. */
+    onDotHoverEnd: () => void
     /** Returns true when a node drag is currently active (suppresses click-to-select). */
     isDragActive: () => boolean
     /** Returns true when pan mode is active (spacebar held); suppresses normal LMB actions. */
@@ -116,19 +132,52 @@ export function buildDotHitShapes(
             const totalDots = (energyOutputCounts.get(node.id) ?? 0) + 1
             for (let i = 0; i < totalDots; i++) {
                 const [x, y] = energyOutputDotPos(node, i, totalDots)
-                _addDotCircle(layer, node.id, i, "output", x, y, cbs.onDotDown)
+                _addDotCircle(
+                    layer,
+                    node.id,
+                    i,
+                    "output",
+                    x,
+                    y,
+                    ENERGY_DOT_COLOR,
+                    cbs.onDotDown,
+                    cbs.onDotHover,
+                    cbs.onDotHoverEnd,
+                )
             }
         } else {
             for (let i = 0; i < def.outputs.length; i++) {
                 const [x, y] = outputDotPos(node, i)
-                _addDotCircle(layer, node.id, i, "output", x, y, cbs.onDotDown)
+                _addDotCircle(
+                    layer,
+                    node.id,
+                    i,
+                    "output",
+                    x,
+                    y,
+                    DOT_OUTPUT_COLOR,
+                    cbs.onDotDown,
+                    cbs.onDotHover,
+                    cbs.onDotHoverEnd,
+                )
             }
         }
 
         // Recipe input dots
         for (let i = 0; i < node.inputBuffers.length; i++) {
             const [x, y] = inputDotPos(node, i)
-            _addDotCircle(layer, node.id, i, "input", x, y, cbs.onDotDown)
+            _addDotCircle(
+                layer,
+                node.id,
+                i,
+                "input",
+                x,
+                y,
+                DOT_INPUT_COLOR,
+                cbs.onDotDown,
+                cbs.onDotHover,
+                cbs.onDotHoverEnd,
+            )
         }
 
         // Energy input dot – production factories only.
@@ -142,7 +191,10 @@ export function buildDotHitShapes(
                 "input",
                 x,
                 y,
+                ENERGY_DOT_COLOR,
                 cbs.onDotDown,
+                cbs.onDotHover,
+                cbs.onDotHoverEnd,
             )
         }
     }
@@ -156,6 +208,7 @@ function _addDotCircle(
     side: "output" | "input",
     x: number,
     y: number,
+    color: string,
     onDown: (
         nodeId: string,
         dotIndex: number,
@@ -163,6 +216,15 @@ function _addDotCircle(
         x: number,
         y: number,
     ) => void,
+    onHover: (
+        nodeId: string,
+        dotIndex: number,
+        side: "output" | "input",
+        x: number,
+        y: number,
+        color: string,
+    ) => void,
+    onHoverEnd: () => void,
 ): void {
     const circle = new Konva.Circle({
         name: "dot-hit",
@@ -179,5 +241,7 @@ function _addDotCircle(
         if (e.type === "mousedown" && (e.evt as MouseEvent).button !== 0) return
         onDown(nodeId, dotIndex, side, x, y)
     })
+    circle.on("mouseenter", () => onHover(nodeId, dotIndex, side, x, y, color))
+    circle.on("mouseleave", () => onHoverEnd())
     layer.add(circle)
 }

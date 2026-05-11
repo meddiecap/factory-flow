@@ -7,6 +7,7 @@ import type { DragContext } from "./drag-handlers"
 import type { CanvasInteractionCallbacks, CameraController } from "./types"
 import { PanController } from "./pan-zoom"
 import { bindDropHandler } from "./drop"
+import { DOT_RADIUS } from "../renderer/constants"
 
 export type { CanvasInteractionCallbacks }
 
@@ -29,6 +30,7 @@ export class CanvasInteraction {
         state: null,
     }
     private _panCtrl: PanController
+    private _hoverCircle: Konva.Circle | null = null
 
     /**
      * Sets up all pointer event listeners on the stage and its HTML container.
@@ -64,6 +66,7 @@ export class CanvasInteraction {
      */
     rebuildDotHits(state: GameState): void {
         this.ctx.state = state
+        this._hideDotHover()
         const existing = this.dragLayer.find(".dot-hit")
         existing.forEach((s) => s.destroy())
 
@@ -99,6 +102,9 @@ export class CanvasInteraction {
             },
             onDotDown: (nodeId, dotIndex, side, x, y) =>
                 this._startDotInteraction(nodeId, dotIndex, side, x, y),
+            onDotHover: (_nodeId, _dotIndex, _side, x, y, color) =>
+                this._showDotHover(x, y, color),
+            onDotHoverEnd: () => this._hideDotHover(),
             isDragActive: () =>
                 this.ctx.nodeDrag !== null && this.ctx.nodeDrag.active,
             isPanMode: () => this._panCtrl.isSpaceHeld,
@@ -201,5 +207,32 @@ export class CanvasInteraction {
      */
     destroy(): void {
         this._panCtrl.destroy()
+    }
+
+    /** Shows a glow circle at the hovered dot position, replacing any existing one. */
+    private _showDotHover(x: number, y: number, color: string): void {
+        this._hideDotHover()
+        this._hoverCircle = new Konva.Circle({
+            x,
+            y,
+            radius: DOT_RADIUS * 1.25,
+            fill: color,
+            opacity: 0.85,
+            shadowColor: color,
+            shadowBlur: 14,
+            shadowOpacity: 0.9,
+            listening: false,
+        })
+        this.dragLayer.add(this._hoverCircle)
+        this.dragLayer.batchDraw()
+    }
+
+    /** Removes the hover glow circle if one is currently shown. */
+    private _hideDotHover(): void {
+        if (this._hoverCircle !== null) {
+            this._hoverCircle.destroy()
+            this._hoverCircle = null
+            this.dragLayer.batchDraw()
+        }
     }
 }

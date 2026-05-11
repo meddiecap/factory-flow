@@ -36,6 +36,10 @@ function drawManhattanLine(
             stroke: color,
             strokeWidth: 2,
             lineJoin: "round",
+            shadowColor: color,
+            shadowBlur: 8,
+            shadowOpacity: 0.45,
+            shadowForStrokeEnabled: true,
         }),
     )
 }
