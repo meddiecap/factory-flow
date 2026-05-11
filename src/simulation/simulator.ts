@@ -5,6 +5,7 @@ import { calcNodeSpeedFactors } from "./energy"
 import { tickConnections } from "./connections"
 import { tickNode } from "./tick"
 import { tickSplitter } from "./splitter"
+import { tickMerger } from "./merger"
 
 /**
  * Speed factors computed by the most recent tick, keyed by node id.
@@ -20,7 +21,7 @@ export let lastSpeedFactors: Map<string, number> = new Map()
  *   1. Calculate per-node speed factors from explicit energy connections.
  *   2. Transport goods along all resource connections (output → input buffers).
  *   3. Advance each production node's cycle progress.
- *   4. Process each Splitter node's fractional distribution.
+ *   4. Process each Splitter and Merger node's pass-through logic.
  *   5. Increment the tick counter.
  *
  * @param state - The complete mutable game state to advance in place.
@@ -43,12 +44,17 @@ export function tick(state: GameState): void {
     // 2. Transport goods along resource connections (energy connections are skipped).
     state.lastTransfers = tickConnections(nodes, connections, nodeMap)
 
-    // 3. Advance each production node; collect splitters for deferred step 4.
+    // 3. Advance each production node; collect splitters and mergers for deferred step 4.
     const splitters: NodeInstance[] = []
+    const mergers: NodeInstance[] = []
     const completedNodeIds: string[] = []
     for (const node of nodes) {
         if (node.type === NodeType.Splitter) {
             splitters.push(node)
+            continue
+        }
+        if (node.type === NodeType.Merger) {
+            mergers.push(node)
             continue
         }
         const def = NODE_DEFS[node.type]
@@ -58,9 +64,12 @@ export function tick(state: GameState): void {
     }
     state.lastProductionNodeIds = completedNodeIds
 
-    // 4. Process Splitter nodes (must run after all other nodes have ticked).
+    // 4. Process Splitter and Merger nodes (must run after all other nodes have ticked).
     for (const node of splitters) {
         tickSplitter(node)
+    }
+    for (const node of mergers) {
+        tickMerger(node)
     }
 
     // 5. Cache speed factors for the renderer and advance tick counter.

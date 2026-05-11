@@ -24,6 +24,7 @@ export const NodeType = {
     Assembly: "Assembly",
     // Special utility nodes
     Splitter: "Splitter",
+    Merger: "Merger",
     Market: "Market",
 } as const
 export type NodeType = (typeof NodeType)[keyof typeof NodeType]
@@ -148,4 +149,9 @@ export interface NodeInstance {
      * Output B receives (1 - ratioA).
      */
     splitterRatioA?: number
+    /**
+     * Index of the input that was last drained (Merger only).
+     * Alternates between 0 and 1 each tick to give both inputs equal throughput.
+     */
+    mergerLastInput?: 0 | 1
 }

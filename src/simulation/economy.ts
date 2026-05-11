@@ -82,7 +82,7 @@ export function canUnlock(type: NodeType, state: GameState): boolean {
  * Node types whose build cost is flat (no escalation per subsequent instance).
  * These are utility nodes where repeated placement is expected and should stay affordable.
  */
-const FLAT_COST_TYPES = new Set<NodeType>([NodeType.Splitter])
+const FLAT_COST_TYPES = new Set<NodeType>([NodeType.Splitter, NodeType.Merger])
 
 /**
  * Calculates the purchase cost for the n-th node of a given type.

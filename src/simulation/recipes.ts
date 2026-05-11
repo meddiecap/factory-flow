@@ -198,6 +198,22 @@ export const NODE_DEFS: Record<NodeType, NodeDef> = {
         defaultOutputCapacity: 10,
     },
 
+    [NodeType.Merger]: {
+        displayName: "Merger",
+        inputs: [
+            { resource: ResourceType.IronOre, amount: 0 }, // dynamic: any resource
+            { resource: ResourceType.IronOre, amount: 0 }, // dynamic: any resource
+        ],
+        outputs: [{ resource: ResourceType.IronOre, amount: 0 }], // dynamic: mirrors drained input
+        // Merger operates per-tick via round-robin drain, not per cycle.
+        cycleDuration: 0,
+        buildCost: 100,
+        fuelPerTick: 0,
+        gridSize: { width: 4, height: 2 },
+        defaultInputCapacity: 10,
+        defaultOutputCapacity: 10,
+    },
+
     [NodeType.Market]: {
         displayName: "Market",
         inputs: [{ resource: ResourceType.IronOre, amount: 0 }], // dynamic: any resource

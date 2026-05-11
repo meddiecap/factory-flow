@@ -72,6 +72,20 @@ const isMarket = computed(() => node.value?.type === NodeType.Market)
 /** Whether this is an Energy Supply node (energy output upgrade). */
 const isEnergySupply = computed(() => node.value?.type === NodeType.EnergySupply)
 
+/** Whether this node type supports the Buffer upgrade (excludes Mines, Market and EnergySupply). */
+const hasBufferUpgrade = computed(() => {
+    if (!node.value) return false
+    const t = node.value.type
+    return (
+        t !== NodeType.EnergySupply &&
+        t !== NodeType.Market &&
+        t !== NodeType.IronMine &&
+        t !== NodeType.CoalMine &&
+        t !== NodeType.CopperMine &&
+        t !== NodeType.SiliconMine
+    )
+})
+
 /** Cost of the next Energy Output upgrade (EnergySupply only): €150 × 2^level. */
 const energyOutputUpgradeCost = computed(() =>
     node.value && def.value
@@ -256,8 +270,8 @@ function bufferColour(amount: number, capacity: number): string {
                         </button>
                     </div>
 
-                    <!-- Buffer upgrade (not for EnergySupply: it has no buffers) -->
-                    <div v-if="!isEnergySupply" class="mb-1.5 flex items-center justify-between gap-2">
+                    <!-- Buffer upgrade (Mines, Market and EnergySupply excluded) -->
+                    <div v-if="hasBufferUpgrade" class="mb-1.5 flex items-center justify-between gap-2">
                         <div>
                             <span>Buffer</span>
                             <span class="ml-1 text-gray-500">Lv{{ node.bufferUpgradeLevel }}</span>

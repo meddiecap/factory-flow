@@ -35,6 +35,7 @@ function _upgradeText(node: NodeInstance): string | null {
 
     switch (node.type) {
         case NodeType.Splitter:
+        case NodeType.Merger:
             return null
         case NodeType.Market:
             return `${node.salesPoints ?? 1} / — / —`
