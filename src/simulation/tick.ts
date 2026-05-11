@@ -50,14 +50,14 @@ export function tickNode(
     node: NodeInstance,
     def: NodeDef,
     speedFactor: number,
-): void {
+): boolean {
     // Utility / pass-through nodes are handled elsewhere.
-    if (def.cycleDuration === 0) return
+    if (def.cycleDuration === 0) return false
 
     // No energy connection → factory is completely stopped.
     if (def.hasEnergyInput && speedFactor === 0) {
         node.status = "no-energy"
-        return
+        return false
     }
 
     // --- Output-blocked check ---
@@ -68,7 +68,7 @@ export function tickNode(
 
     if (outputFull) {
         node.status = "output-blocked"
-        return
+        return false
     }
 
     // --- Input check: does the node have enough resources for one cycle? ---
@@ -82,7 +82,7 @@ export function tickNode(
 
     if (!hasEnoughInput) {
         node.status = "waiting"
-        return
+        return false
     }
 
     // --- Advance progress ---
@@ -112,8 +112,10 @@ export function tickNode(
 
         node.progress -= def.cycleDuration
         node.status = "active"
+        return true
     } else {
         node.status = "active"
+        return false
     }
 }
 

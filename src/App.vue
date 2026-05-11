@@ -8,6 +8,7 @@ import { tick, checkWin } from './simulation/simulator'
 import { tickMarket } from './simulation/economy'
 import { saveState, loadState, clearState } from './simulation/persistence'
 import { initSequences } from './simulation/useGameState'
+import { playProductionReady } from './audio/sound'
 import PalettePanel from './components/PalettePanel.vue'
 import HudBar from './components/HudBar.vue'
 import DetailPanel from './components/DetailPanel.vue'
@@ -142,6 +143,16 @@ onUnmounted(() => {
 // Re-render canvas visuals every tick (buffers, progress bars change).
 watch(() => gameState.tick, () => {
   renderer?.render(gameState)
+  const ids = gameState.lastProductionNodeIds
+  if (ids !== undefined && ids.length > 0) {
+    playProductionReady(
+      ids,
+      gameState.nodes,
+      renderer?.getCamera(),
+      window.innerWidth,
+      window.innerHeight,
+    )
+  }
 })
 
 // Rebuild hit areas when nodes, connections, or input-dot counts change.

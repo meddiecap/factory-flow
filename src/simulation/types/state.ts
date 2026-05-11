@@ -52,6 +52,11 @@ export interface GameState {
      */
     lastTransfers?: import("../connections").TransferEvent[]
     /**
+     * IDs of nodes whose production cycle completed during the most recent tick.
+     * Used by the audio system for proximity-based sound effects. Not persisted.
+     */
+    lastProductionNodeIds?: string[]
+    /**
      * Camera state (pan offset in screen pixels + zoom factor).
      * Persisted so the player returns to the same view on reload.
      * Absent in older saves; treated as { panX: 0, panY: 0, zoom: 1 }.

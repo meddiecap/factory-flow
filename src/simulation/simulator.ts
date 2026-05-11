@@ -45,6 +45,7 @@ export function tick(state: GameState): void {
 
     // 3. Advance each production node; collect splitters for deferred step 4.
     const splitters: NodeInstance[] = []
+    const completedNodeIds: string[] = []
     for (const node of nodes) {
         if (node.type === NodeType.Splitter) {
             splitters.push(node)
@@ -53,8 +54,9 @@ export function tick(state: GameState): void {
         const def = NODE_DEFS[node.type]
         if (def === undefined) continue
         const sf = speedFactors.get(node.id) ?? 1.0
-        tickNode(node, def, sf)
+        if (tickNode(node, def, sf)) completedNodeIds.push(node.id)
     }
+    state.lastProductionNodeIds = completedNodeIds
 
     // 4. Process Splitter nodes (must run after all other nodes have ticked).
     for (const node of splitters) {
