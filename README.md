@@ -1,5 +1,7 @@
 # Factory Flow
 
+![Factory Flow preview](public/preview.png)
+
 **Factory Flow** is an incremental factory-building game in the browser. Build and optimise production chains as a visual flowchart diagram until you complete the ultimate challenge: assembling a rocket.
 
 ---
