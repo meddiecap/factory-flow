@@ -36,8 +36,6 @@ function _upgradeText(node: NodeInstance): string | null {
     switch (node.type) {
         case NodeType.Splitter:
             return null
-        case NodeType.Warehouse:
-            return `— / ${b} / —`
         case NodeType.Market:
             return `${node.salesPoints ?? 1} / — / —`
         case NodeType.EnergySupply:
@@ -49,8 +47,8 @@ function _upgradeText(node: NodeInstance): string | null {
 
 /**
  * Draws a single node as a rectangle with label, input/output dots and a status bar.
- * Production nodes show a cycle-progress bar; Splitter shows its ratio; Warehouse
- * shows its buffer fill fraction. EnergySupply receives a dynamic output dot count.
+ * Production nodes show a cycle-progress bar; Splitter shows its ratio.
+ * EnergySupply receives a dynamic output dot count.
  * Market nodes grow vertically and show per-slot revenue labels next to each input dot.
  *
  * @param layer - The Konva layer to draw onto.
@@ -318,33 +316,6 @@ export function drawNode(
                 align: "center",
             }),
         )
-    } else if (node.type === NodeType.Warehouse) {
-        const buf = node.inputBuffers[0]
-        if (buf !== undefined && buf.capacity > 0) {
-            const fill = Math.min(buf.amount / buf.capacity, 1)
-            layer.add(
-                new Konva.Rect({
-                    x: barX,
-                    y: barY,
-                    width: barW,
-                    height: PROGRESS_BAR_HEIGHT,
-                    fill: "#374151",
-                    cornerRadius: 2,
-                }),
-            )
-            if (fill > 0) {
-                layer.add(
-                    new Konva.Rect({
-                        x: barX,
-                        y: barY,
-                        width: Math.round(barW * fill),
-                        height: PROGRESS_BAR_HEIGHT,
-                        fill: "#60a5fa",
-                        cornerRadius: 2,
-                    }),
-                )
-            }
-        }
     } else if (def.cycleDuration > 0) {
         const fill = Math.min(node.progress / def.cycleDuration, 1)
         const color = STATUS_COLORS[node.status] ?? STATUS_COLORS["idle"]!

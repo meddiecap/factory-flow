@@ -5,7 +5,6 @@ import { NodeType } from "../src/simulation/types"
 /** Node types that operate without a production cycle (pass-through / utility). */
 const UTILITY_TYPES: NodeType[] = [
     NodeType.Splitter,
-    NodeType.Warehouse,
     NodeType.Market,
     NodeType.EnergySupply,
 ]

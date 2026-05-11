@@ -198,18 +198,6 @@ export const NODE_DEFS: Record<NodeType, NodeDef> = {
         defaultOutputCapacity: 10,
     },
 
-    [NodeType.Warehouse]: {
-        displayName: "Warehouse",
-        inputs: [{ resource: ResourceType.IronOre, amount: 0 }], // dynamic: any resource
-        outputs: [{ resource: ResourceType.IronOre, amount: 0 }], // dynamic: mirrors input
-        cycleDuration: 0,
-        buildCost: 300,
-        fuelPerTick: 0,
-        gridSize: { width: 4, height: 4 },
-        defaultInputCapacity: 200,
-        defaultOutputCapacity: 200,
-    },
-
     [NodeType.Market]: {
         displayName: "Market",
         inputs: [{ resource: ResourceType.IronOre, amount: 0 }], // dynamic: any resource

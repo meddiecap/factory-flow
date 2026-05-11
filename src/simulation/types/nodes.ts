@@ -24,7 +24,6 @@ export const NodeType = {
     Assembly: "Assembly",
     // Special utility nodes
     Splitter: "Splitter",
-    Warehouse: "Warehouse",
     Market: "Market",
 } as const
 export type NodeType = (typeof NodeType)[keyof typeof NodeType]

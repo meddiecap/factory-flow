@@ -129,12 +129,6 @@ describe("buildCost", () => {
         expect(buildCost(NodeType.Splitter, 5)).toBe(100)
     })
 
-    it("Warehouse scales: €300, €450, €675 for 1st, 2nd, 3rd", () => {
-        expect(buildCost(NodeType.Warehouse, 0)).toBe(300)
-        expect(buildCost(NodeType.Warehouse, 1)).toBe(450)
-        expect(buildCost(NodeType.Warehouse, 2)).toBe(675)
-    })
-
     it("Market scales: €500, €750, €1125 for 1st, 2nd, 3rd", () => {
         expect(buildCost(NodeType.Market, 0)).toBe(500)
         expect(buildCost(NodeType.Market, 1)).toBe(750)
