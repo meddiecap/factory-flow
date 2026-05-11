@@ -103,7 +103,14 @@ export function calcNodeSpeedFactors(
             continue
         }
 
-        result.set(node.id, Math.min(1, receivedPerTick / neededPerTick))
+        if (receivedPerTick >= neededPerTick) {
+            // Surplus energy gives a speed bonus capped at ×2.2: multiplier = 1 + 0.2 * ln(surplus + 1).
+            // See game-design.md §5.3.
+            const surplus = receivedPerTick - neededPerTick
+            result.set(node.id, Math.min(2.2, 1 + 0.2 * Math.log(surplus + 1)))
+        } else {
+            result.set(node.id, receivedPerTick / neededPerTick)
+        }
     }
 
     return result

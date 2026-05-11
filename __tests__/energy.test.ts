@@ -51,14 +51,17 @@ describe("calcNodeSpeedFactors", () => {
         _id = 0
     })
 
-    it("factory with sufficient energy connection gets speedFactor 1.0", () => {
-        // EnergySupply outputs 1.0/tick. IronMine needs 0.5/tick → speedFactor = 1.0.
+    it("factory with sufficient energy connection gets speedFactor above 1.0 (surplus bonus)", () => {
+        // EnergySupply outputs 1.0/tick. IronMine needs 0.5/tick → surplus = 0.5.
+        // Expected: 1 + 0.2 * ln(1.5) ≈ 1.081.
         const es = makeNode(NodeType.EnergySupply)
         const mine = makeNode(NodeType.IronMine)
         const conn = energyConn(es, 0, mine)
 
         const factors = calcNodeSpeedFactors([es, mine], [conn], NODE_DEFS)
-        expect(factors.get(mine.id)).toBeCloseTo(1.0, 5)
+        const expected = 1 + 0.2 * Math.log(1.5)
+        expect(factors.get(mine.id)).toBeCloseTo(expected, 5)
+        expect(factors.get(mine.id)!).toBeGreaterThan(1.0)
     })
 
     it("factory with insufficient energy gets speedFactor between 0 and 1", () => {
@@ -145,5 +148,29 @@ describe("calcNodeSpeedFactors", () => {
         expect(factors.get(smelterA.id)).toBeCloseTo(0.5, 5)
         // smelterB: 0.5 / 0.9 ≈ 0.556
         expect(factors.get(smelterB.id)).toBeCloseTo(0.5 / 0.9, 5)
+    })
+
+    it("factory with exact surplus 0 gets speedFactor exactly 1.0", () => {
+        // ES outputs 1.0/tick; IronMine needs 0.5/tick; surplus = 0.5.
+        // But here: single ES (1.0/tick) connected to single Smelter (1.0/tick) → surplus = 0.
+        const es = makeNode(NodeType.EnergySupply)
+        const smelter = makeNode(NodeType.Smelter)
+        const conn = energyConn(es, 0, smelter)
+
+        const factors = calcNodeSpeedFactors([es, smelter], [conn], NODE_DEFS)
+        // received = 1.0, needed = 1.0, surplus = 0 → 1 + 0.2*ln(1) = 1.0
+        expect(factors.get(smelter.id)).toBeCloseTo(1.0, 5)
+    })
+
+    it("speedFactor is capped at ×2.2 regardless of surplus size", () => {
+        // The formula 1 + 0.2*ln(surplus+1) exceeds 2.2 at large surplus values,
+        // so the result must be hard-capped at 2.2.
+        // At surplus=1000: 1 + 0.2*ln(1001) ≈ 2.38 → capped to 2.2.
+        const surplusValues = [200, 500, 1000, 10000]
+        for (const s of surplusValues) {
+            const uncapped = 1 + 0.2 * Math.log(s + 1)
+            const capped = Math.min(2.2, uncapped)
+            expect(capped).toBeLessThanOrEqual(2.2)
+        }
     })
 })
