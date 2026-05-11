@@ -139,5 +139,3 @@ Run tests:
 ```bash
 npm run test
 ```
-
-See [game-design.md](docs/game-design.md) for the full game design and [implementation-plan.md](docs/implementation-plan.md) for the implementation strategy.
